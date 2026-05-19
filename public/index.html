@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phở Hà Nội — Quản lý F&B</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/chat.css">
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div id="toast-wrap" class="toast-wrap"></div>
+
+  <div id="app">
+    <!-- LOGIN -->
+    <section id="login-screen" class="screen">
+      <div class="login-layout">
+        <div class="login-hero">
+          <div class="hero-pattern"></div>
+          <span class="hero-badge">Premium F&B</span>
+          <div class="brand">
+            <span class="logo">🍜</span>
+            <h1>Phở Hà Nội</h1>
+            <p>Hệ thống quản lý nhà hàng — Order realtime & AI</p>
+          </div>
+          <ul class="hero-features">
+            <li>📊 Dashboard doanh thu trực tiếp</li>
+            <li>🪑 Quản lý bàn & order tức thì</li>
+            <li>✨ Chat AI gợi ý món thông minh</li>
+          </ul>
+          <div class="hero-stats" id="login-hero-stats">
+            <div><strong>3</strong><span>Chi nhánh</span></div>
+            <div><strong>17+</strong><span>Món</span></div>
+            <div><strong>AI</strong><span>Gợi ý order</span></div>
+          </div>
+        </div>
+        <div class="login-card">
+          <div class="login-card-inner">
+            <div class="login-card-header">
+              <div class="logo-ring sm">🍜</div>
+              <div>
+                <h2>Đăng nhập</h2>
+                <p class="hint">Quản lý Nhà hàng Phở Hà Nội</p>
+              </div>
+            </div>
+            <p class="hint">Chọn tài khoản demo hoặc nhập email để bắt đầu.</p>
+            <form id="login-form">
+              <label>Email</label>
+              <input type="email" id="login-email" value="thungan@nhang.com" required>
+              <label>Mật khẩu</label>
+              <input type="password" id="login-password" value="password123" required>
+              <p id="login-error" class="error hidden"></p>
+              <button type="submit" class="btn primary full">Vào hệ thống →</button>
+            </form>
+            <div class="login-demo-accounts">
+              <p>Tài khoản demo nhanh:</p>
+              <div class="demo-chip-row">
+                <span class="demo-chip" data-email="thungan@nhang.com">Thu ngân</span>
+                <span class="demo-chip" data-email="phucvu@nhang.com">Phục vụ</span>
+                <span class="demo-chip" data-email="bep@nhang.com">Bếp</span>
+                <span class="demo-chip" data-email="admin@nhang.com">Admin</span>
+              </div>
+            </div>
+            <p id="login-conn" class="hint" style="margin-top:0.75rem"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN -->
+    <section id="main-screen" class="screen">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand compact">
+            <span class="logo">🍜</span>
+            <div><strong>Phở HN</strong><small id="user-info">—</small></div>
+          </div>
+        </div>
+        <nav class="nav">
+          <button class="nav-item active" data-page="dashboard" data-icon="📊"><span>Tổng quan</span></button>
+          <button class="nav-item" data-page="tables" data-icon="🪑"><span>Bàn & Order</span></button>
+          <button class="nav-item" data-page="kitchen" data-icon="👨‍🍳"><span>Bếp</span></button>
+          <button class="nav-item" data-page="menu" data-icon="📋"><span>Thực đơn</span></button>
+          <button class="nav-item" data-page="inventory" data-icon="📦"><span>Kho</span></button>
+          <button class="nav-item" data-page="reservations" data-icon="📅"><span>Đặt bàn</span></button>
+          <button class="nav-item" data-page="reports" data-icon="📈"><span>Báo cáo</span></button>
+          <button class="nav-item nav-ai" data-page="ai" data-icon="✨"><span>AI Insights</span></button>
+        </nav>
+        <div class="sidebar-footer">
+          <button id="logout-btn" class="btn ghost full"><span>Đăng xuất</span></button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <p id="topbar-greet" class="topbar-greet">Xin chào</p>
+            <h2 id="page-title">Tổng quan</h2>
+          </div>
+          <div class="topbar-actions">
+            <span id="conn-badge" class="conn-badge offline">Đang kết nối…</span>
+            <span id="branch-badge" class="badge">Chi nhánh</span>
+          </div>
+        </header>
+
+        <!-- DASHBOARD -->
+        <section id="page-dashboard" class="page active">
+          <div id="stats-grid" class="stats-grid"></div>
+          <div class="dashboard-grid" style="margin-top:1.25rem">
+            <article class="card card-elevated">
+              <div class="card-head">
+                <span class="card-icon">🔥</span>
+                <h3>Món bán chạy</h3>
+                <button type="button" class="link-btn" data-goto="menu">Xem thực đơn</button>
+              </div>
+              <div id="top-dishes" class="list-rich"></div>
+            </article>
+            <article class="card card-elevated">
+              <div class="card-head">
+                <span class="card-icon">📦</span>
+                <h3>Cảnh báo kho</h3>
+                <button type="button" class="link-btn" data-goto="inventory">Chi tiết</button>
+              </div>
+              <div id="stock-alerts" class="list-rich"></div>
+            </article>
+          </div>
+          <div class="dashboard-grid" style="margin-top:1.25rem">
+            <article class="card">
+              <div class="card-head"><h3>🧾 Hoạt động gần đây</h3></div>
+              <div id="recent-activity" class="activity-list"></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h3>👑 Khách VIP</h3></div>
+              <div id="vip-customers" class="vip-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- TABLES -->
+        <section id="page-tables" class="page">
+          <div class="page-header toolbar page-header-v2">
+            <div>
+              <h3>Bàn & Order</h3>
+              <p class="page-subtitle">Một không gian điều khiển nhanh cho lựa chọn bàn, mở order và theo dõi trạng thái ngay lập tức.</p>
+            </div>
+            <div class="toolbar-actions">
+              <button id="btn-new-order" class="btn primary">+ Order mới</button>
+              <button id="btn-open-chat" class="btn secondary" type="button">✨ Chat AI</button>
+            </div>
+          </div>
+          <div class="table-legend">
+            <span class="legend-trong">Trống</span>
+            <span class="legend-dang_dung">Đang dùng</span>
+            <span class="legend-dat_truoc">Đặt trước</span>
+          </div>
+          <div class="layout-order layout-order-v2">
+            <div class="tables-panel">
+              <div id="tables-grid" class="tables-grid"></div>
+            </div>
+            <aside id="order-panel" class="card order-panel hidden">
+              <div class="order-panel-head">
+                <div>
+                  <span class="order-status-tag">Chưa chọn order</span>
+                  <h3>Order #<span id="current-hd">—</span></h3>
+                  <p class="order-subtitle">Bàn <span id="current-ban">—</span></p>
+                </div>
+                <button type="button" id="btn-close-order" class="btn-close-panel" title="Đóng">×</button>
+              </div>
+              <div id="order-items" class="list-order"></div>
+              <div class="order-total-bar">
+                <div>
+                  <span class="order-label">Tổng tiền hiện tại</span>
+                  <strong id="order-total">0</strong>đ
+                </div>
+              </div>
+              <div class="order-action-row">
+                <select id="add-mon-select" class="input-grow"></select>
+                <input type="number" id="add-sl" value="1" min="1" class="input-sm">
+              </div>
+              <div class="order-action-row order-action-bottom">
+                <button id="btn-add-item" class="btn secondary">Thêm món</button>
+                <button id="btn-pay" class="btn primary full-width">💳 Thanh toán</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- KITCHEN -->
+        <section id="page-kitchen" class="page">
+          <div class="kitchen-header">
+            <h3 style="font-family:var(--font-display);margin-bottom:0.75rem">Hàng đợi bếp</h3>
+            <div id="kitchen-stats" class="kitchen-stats"></div>
+          </div>
+          <div id="kitchen-queue" class="kitchen-queue"></div>
+        </section>
+
+        <!-- MENU -->
+        <section id="page-menu" class="page">
+          <div class="menu-toolbar">
+            <input type="search" id="menu-search" class="search-input" placeholder="Tìm món...">
+            <button type="button" class="filter-chip active" data-cat="">Tất cả</button>
+            <button type="button" class="filter-chip" data-cat="Khai vị">Khai vị</button>
+            <button type="button" class="filter-chip" data-cat="Món chính">Món chính</button>
+            <button type="button" class="filter-chip" data-cat="Đồ uống">Đồ uống</button>
+            <button type="button" class="filter-chip" data-cat="Tráng miệng">Tráng miệng</button>
+          </div>
+          <div id="menu-grid" class="menu-grid"></div>
+        </section>
+
+        <!-- INVENTORY -->
+        <section id="page-inventory" class="page">
+          <article class="card">
+            <div class="card-head"><h3>📦 Tồn kho nguyên liệu</h3></div>
+            <div id="inventory-table"></div>
+          </article>
+        </section>
+
+        <!-- RESERVATIONS -->
+        <section id="page-reservations" class="page">
+          <div class="reservation-header">
+            <h3 style="font-family:var(--font-display)">Lịch đặt bàn</h3>
+            <button id="btn-new-reservation" class="btn primary">+ Đặt bàn mới</button>
+          </div>
+          <div id="reservations-list" class="reservations-list"></div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="page-reports" class="page">
+          <article class="card card-toolbar">
+            <input type="date" id="report-from" class="input-date">
+            <span class="toolbar-sep">→</span>
+            <input type="date" id="report-to" class="input-date">
+            <button id="btn-report" class="btn primary">Xem doanh thu</button>
+          </article>
+          <article class="card report-card">
+            <div class="card-head"><h3>📈 Biểu đồ doanh thu</h3></div>
+            <div id="report-chart" class="report-chart report-bars"></div>
+          </article>
+        </section>
+
+        <!-- AI -->
+        <section id="page-ai" class="page">
+          <div class="toolbar ai-actions">
+            <button id="btn-ai-forecast" class="btn primary">🔮 Dự báo nhu cầu</button>
+            <button id="btn-ai-anomaly" class="btn secondary">⚠️ Cảnh báo kho AI</button>
+            <button id="btn-ai-recommend" class="btn ghost">👤 Gợi ý KH VIP</button>
+          </div>
+          <div class="grid-2">
+            <article class="card">
+              <div class="card-head"><h3>Kết quả phân tích</h3></div>
+              <div id="ai-results" class="list"></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h3>Gợi ý món</h3></div>
+              <div id="ai-recommend" class="list"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </section>
+
+    <!-- CHAT -->
+    <div id="chat-widget" class="hidden">
+      <div id="chat-panel" class="chat-panel">
+        <header class="chat-header">
+          <div class="chat-header-avatar">✨</div>
+          <div>
+            <h4>Chat với AI</h4>
+            <p>Trò chuyện tự nhiên, hỏi gì cũng được.</p>
+          </div>
+          <span id="chat-order-badge" class="chat-order-badge">Chưa mở order</span>
+        </header>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-quick" id="chat-quick">
+          <button type="button" data-q="hello">Hello</button>
+          <button type="button" data-q="Giới thiệu về bạn">Giới thiệu</button>
+          <button type="button" data-q="Tôi cần hỗ trợ">Hỗ trợ</button>
+          <button type="button" data-q="món bán chạy">Bán chạy</button>
+          <button type="button" data-q="tôi muốn order">Order</button>
+        </div>
+        <form id="chat-form" class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="VD: gợi ý phở, đồ uống..." autocomplete="off">
+          <button type="submit" class="btn-send">➤</button>
+        </form>
+      </div>
+      <button type="button" id="chat-fab" class="chat-fab"><span class="badge-dot"></span>✨</button>
+    </div>
+
+  <div id="modal" class="modal hidden">
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+      <div class="modal-box modal-box-lg">
+        <h3 id="modal-title"></h3>
+        <div id="modal-body"></div>
+        <div class="modal-actions">
+          <button type="button" id="modal-cancel" class="btn ghost">Hủy</button>
+          <button type="button" id="modal-ok" class="btn primary">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
+  <script src="js/extras.js"></script>
+</body>
+</html>
