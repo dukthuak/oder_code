@@ -1,7 +1,19 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config({ path: require('path').join(__dirname, '.env'), override: true });
+
+// Load .env từ server directory hoặc parent directory
+const envPath = path.join(__dirname, '.env');
+const parentEnvPath = path.join(__dirname, '..', '.env');
+const fs = require('fs');
+
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath, override: true });
+} else if (fs.existsSync(parentEnvPath)) {
+  require('dotenv').config({ path: parentEnvPath, override: true });
+} else {
+  require('dotenv').config({ override: true });
+}
 
 const authRoutes = require('./routes/auth');
 const menuRoutes = require('./routes/menu');
