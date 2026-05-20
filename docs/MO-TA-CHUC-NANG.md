@@ -1,5 +1,8 @@
 # Hệ thống CSDL Quản lý Kinh doanh Dịch vụ Ăn uống – Nhà hàng
 
+> **Tài liệu đầy đủ (chức năng + bảng CSDL + view/procedure):** [`TAI-LIEU-HE-THONG.md`](TAI-LIEU-HE-THONG.md)  
+> **Chi tiết giao diện web:** [`TAI-LIEU-CHUC-NANG-WEB.md`](TAI-LIEU-CHUC-NANG-WEB.md)
+
 ## 1. Phạm vi bài toán
 
 Quản lý toàn bộ hoạt động kinh doanh F&B của một nhà hàng (có thể nhiều chi nhánh): thực đơn, bàn/đặt chỗ, gọi món – thanh toán, kho nguyên liệu, nhân sự, khách hàng và báo cáo.
@@ -9,7 +12,7 @@ Quản lý toàn bộ hoạt động kinh doanh F&B của một nhà hàng (có 
 | Mã | Chức năng | Mô tả |
 |----|-----------|--------|
 | F01 | Quản lý chi nhánh | CRUD chi nhánh, giờ mở cửa, trạng thái |
-| F02 | Quản lý nhân viên & phân quyền | Nhân viên, vai trò (admin, thu ngân, bếp, phục vụ), đăng nhập |
+| F02 | Quản lý nhân viên & phân quyền | Nhân viên, vai trò (admin, thu ngân, bếp, phục vụ), đăng nhập — **web:** mục Phân quyền (chỉ admin), xem `docs/TAI-LIEU-CHUC-NANG-WEB.md` |
 | F03 | Quản lý thực đơn | Danh mục, món ăn, giá, trạng thái còn/bán |
 | F04 | Công thức & nguyên liệu | Định mức nguyên liệu/món, liên kết kho |
 | F05 | Quản lý bàn | Bàn theo chi nhánh, trạng thái trống/đang dùng/đặt trước |

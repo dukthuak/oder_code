@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
+const menuAdmin = [authMiddleware, requireRole('admin')];
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.get('/categories', async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', ...menuAdmin, async (req, res) => {
   const { ma_dm, ten_mon, gia_ban, mo_ta, don_vi } = req.body;
   try {
     const [r] = await pool.query(
@@ -39,7 +40,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.patch('/:id/status', authMiddleware, async (req, res) => {
+router.patch('/:id/status', ...menuAdmin, async (req, res) => {
   const { trang_thai } = req.body;
   try {
     await pool.query('UPDATE mon_an SET trang_thai = ? WHERE ma_mon = ?', [trang_thai, req.params.id]);

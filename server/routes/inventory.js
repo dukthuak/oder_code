@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
+const khoRoles = [authMiddleware, requireRole('admin', 'kho')];
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.get('/alerts', async (req, res) => {
   }
 });
 
-router.post('/import', authMiddleware, async (req, res) => {
+router.post('/import', ...khoRoles, async (req, res) => {
   const { ma_ncc, chi_tiet } = req.body;
   const ma_nv = req.user.ma_nv;
   const conn = await pool.getConnection();

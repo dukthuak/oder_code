@@ -1547,3 +1547,59 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Phân quyền (RBAC) ─── */
+.rbac-banner {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(180, 120, 40, 0.12), rgba(139, 90, 43, 0.08));
+  border: 1px solid rgba(180, 120, 40, 0.35);
+}
+
+.rbac-banner-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.rbac-banner p {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.rbac-login-hint {
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(180, 120, 40, 0.08);
+  border: 1px dashed rgba(180, 120, 40, 0.3);
+}
+
+.rbac-page-note {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--gold);
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.access-denied-card {
+  text-align: center;
+  padding: 3rem 2rem;
+  max-width: 520px;
+  margin: 2rem auto;
+}
+
+.access-denied-card .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.nav-item.hidden {
+  display: none !important;
+}

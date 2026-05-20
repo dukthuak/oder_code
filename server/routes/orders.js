@@ -1,6 +1,10 @@
 const express = require('express');
 const pool = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
+
+const orderRoles = [authMiddleware, requireRole('admin', 'thu_ngan', 'phuc_vu')];
+const payRoles = [authMiddleware, requireRole('admin', 'thu_ngan')];
+const kitchenRoles = [authMiddleware, requireRole('admin', 'bep')];
 
 const router = express.Router();
 
@@ -41,7 +45,7 @@ router.get('/:id/details', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', ...orderRoles, async (req, res) => {
   const { ma_ban, ma_kh, ma_cn } = req.body;
   const ma_nv = req.user.ma_nv;
   const cn = ma_cn || req.user.ma_cn;
@@ -63,7 +67,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/:id/items', authMiddleware, async (req, res) => {
+router.post('/:id/items', ...orderRoles, async (req, res) => {
   const { ma_mon, so_luong, ghi_chu } = req.body;
   const conn = await pool.getConnection();
   try {
@@ -85,7 +89,7 @@ router.post('/:id/items', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/:id/pay', authMiddleware, async (req, res) => {
+router.post('/:id/pay', ...payRoles, async (req, res) => {
   const { hinh_thuc, so_tien } = req.body;
   const conn = await pool.getConnection();
   try {
@@ -108,7 +112,7 @@ router.post('/:id/pay', authMiddleware, async (req, res) => {
   }
 });
 
-router.patch('/items/:ctId/status', authMiddleware, async (req, res) => {
+router.patch('/items/:ctId/status', ...kitchenRoles, async (req, res) => {
   const { trang_thai_mon } = req.body;
   try {
     await pool.query('UPDATE chi_tiet_hd SET trang_thai_mon = ? WHERE ma_ct = ?', [
@@ -121,7 +125,7 @@ router.patch('/items/:ctId/status', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/kitchen/queue', authMiddleware, async (req, res) => {
+router.get('/kitchen/queue', ...kitchenRoles, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT ct.*, m.ten_mon, h.ma_hd, b.so_ban

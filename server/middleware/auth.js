@@ -25,7 +25,10 @@ async function authMiddleware(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!roles.includes(req.user.vai_tro)) {
-      return res.status(403).json({ error: 'Không có quyền' });
+      return res.status(403).json({
+        error: 'Không có quyền truy cập chức năng này',
+        message: 'Chỉ tài khoản có thẩm quyền phù hợp mới được sử dụng.',
+      });
     }
     next();
   };

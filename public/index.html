@@ -47,6 +47,7 @@
               </div>
             </div>
             <p class="hint">Chọn tài khoản demo hoặc nhập email để bắt đầu.</p>
+            <p class="hint rbac-login-hint">🔐 Mỗi vai trò chỉ thấy các chức năng được phép. <strong>Phân quyền nhân viên</strong> chỉ dùng được với tài khoản <strong>Quản trị (admin)</strong>.</p>
             <form id="login-form">
               <label>Email</label>
               <input type="email" id="login-email" value="thungan@nhang.com" required>
@@ -88,6 +89,7 @@
           <button class="nav-item" data-page="reservations" data-icon="📅"><span>Đặt bàn</span></button>
           <button class="nav-item" data-page="reports" data-icon="📈"><span>Báo cáo</span></button>
           <button class="nav-item nav-ai" data-page="ai" data-icon="✨"><span>AI Insights</span></button>
+          <button class="nav-item nav-admin-only" data-page="permissions" data-icon="🔐"><span>Phân quyền</span></button>
         </nav>
         <div class="sidebar-footer">
           <button id="logout-btn" class="btn ghost full"><span>Đăng xuất</span></button>
@@ -190,6 +192,7 @@
 
         <!-- KITCHEN -->
         <section id="page-kitchen" class="page">
+          <p class="rbac-page-note" data-rbac-note="kitchen">📌 Chỉ tài khoản <strong>Quản trị</strong> hoặc <strong>Bếp</strong> có thẩm quyền cập nhật hàng đợi bếp.</p>
           <div class="kitchen-header">
             <h3 style="font-family:var(--font-display);margin-bottom:0.75rem">Hàng đợi bếp</h3>
             <div id="kitchen-stats" class="kitchen-stats"></div>
@@ -212,6 +215,7 @@
 
         <!-- INVENTORY -->
         <section id="page-inventory" class="page">
+          <p class="rbac-page-note" data-rbac-note="inventory">📌 Chỉ tài khoản <strong>Quản trị</strong> hoặc <strong>Kho</strong> có thẩm quyền quản lý tồn kho.</p>
           <article class="card">
             <div class="card-head"><h3>📦 Tồn kho nguyên liệu</h3></div>
             <div id="inventory-table"></div>
@@ -229,6 +233,7 @@
 
         <!-- REPORTS -->
         <section id="page-reports" class="page">
+          <p class="rbac-page-note" data-rbac-note="reports">📌 Chỉ tài khoản <strong>Quản trị</strong> hoặc <strong>Thu ngân</strong> có thẩm quyền xem báo cáo doanh thu.</p>
           <article class="card card-toolbar">
             <input type="date" id="report-from" class="input-date">
             <span class="toolbar-sep">→</span>
@@ -238,6 +243,38 @@
           <article class="card report-card">
             <div class="card-head"><h3>📈 Biểu đồ doanh thu</h3></div>
             <div id="report-chart" class="report-chart report-bars"></div>
+          </article>
+        </section>
+
+        <!-- ACCESS DENIED -->
+        <section id="page-denied" class="page">
+          <article class="card access-denied-card">
+            <div class="empty-icon">🔒</div>
+            <h3>Không có quyền truy cập</h3>
+            <p id="denied-message" class="page-subtitle">Chỉ tài khoản có thẩm quyền phù hợp mới được sử dụng chức năng này.</p>
+            <p class="hint">Liên hệ Quản trị (admin) nếu bạn cần quyền bổ sung.</p>
+          </article>
+        </section>
+
+        <!-- PERMISSIONS (admin only) -->
+        <section id="page-permissions" class="page">
+          <div class="rbac-banner">
+            <span class="rbac-banner-icon">🔐</span>
+            <div>
+              <strong>Quản lý phân quyền nhân viên</strong>
+              <p>Chỉ tài khoản có thẩm quyền (vai trò <strong>Quản trị — admin</strong>) mới được sử dụng tính năng phân quyền. Các vai trò khác không thấy mục này trên menu.</p>
+            </div>
+          </div>
+          <article class="card">
+            <div class="card-head">
+              <h3>Danh sách nhân viên & vai trò</h3>
+              <button type="button" id="btn-reload-permissions" class="btn ghost">Làm mới</button>
+            </div>
+            <div id="permissions-table-wrap" class="data-table-wrap"></div>
+          </article>
+          <article class="card" style="margin-top:1rem">
+            <div class="card-head"><h3>Vai trò trong hệ thống</h3></div>
+            <div id="roles-reference" class="list-rich"></div>
           </article>
         </section>
 
@@ -268,21 +305,21 @@
         <header class="chat-header">
           <div class="chat-header-avatar">✨</div>
           <div>
-            <h4>Chat với AI</h4>
-            <p>Trò chuyện tự nhiên, hỏi gì cũng được.</p>
+            <h4>Trợ lý AI</h4>
+            <p>Hỗ trợ, hướng dẫn, tra cứu & gợi ý món</p>
           </div>
-          <span id="chat-order-badge" class="chat-order-badge">Chưa mở order</span>
+          <span id="chat-order-badge" class="chat-order-badge" title="Order đang mở (nếu có)">—</span>
         </header>
         <div id="chat-messages" class="chat-messages"></div>
         <div class="chat-quick" id="chat-quick">
-          <button type="button" data-q="hello">Hello</button>
-          <button type="button" data-q="Giới thiệu về bạn">Giới thiệu</button>
+          <button type="button" data-q="hướng dẫn sử dụng">Hướng dẫn</button>
           <button type="button" data-q="Tôi cần hỗ trợ">Hỗ trợ</button>
-          <button type="button" data-q="món bán chạy">Bán chạy</button>
-          <button type="button" data-q="tôi muốn order">Order</button>
+          <button type="button" data-q="doanh thu hôm nay">Doanh thu</button>
+          <button type="button" data-q="cảnh báo kho">Kho</button>
+          <button type="button" data-q="món bán chạy">Món hot</button>
         </div>
         <form id="chat-form" class="chat-input-row">
-          <input type="text" id="chat-input" placeholder="VD: gợi ý phở, đồ uống..." autocomplete="off">
+          <input type="text" id="chat-input" placeholder="Hỏi bất kỳ: hướng dẫn, kho, lỗi, gợi ý món…" autocomplete="off">
           <button type="submit" class="btn-send">➤</button>
         </form>
       </div>

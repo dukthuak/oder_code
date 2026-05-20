@@ -1,10 +1,11 @@
 const express = require('express');
 const pool = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
+const reportRoles = [authMiddleware, requireRole('admin', 'thu_ngan')];
 
 const router = express.Router();
 
-router.get('/revenue', authMiddleware, async (req, res) => {
+router.get('/revenue', ...reportRoles, async (req, res) => {
   const tu = req.query.tu || new Date().toISOString().slice(0, 10);
   const den = req.query.den || tu;
   const ma_cn = req.query.ma_cn || null;
@@ -36,7 +37,11 @@ router.get('/branches', async (req, res) => {
   }
 });
 
-router.get('/dashboard', authMiddleware, async (req, res) => {
+router.get(
+  '/dashboard',
+  authMiddleware,
+  requireRole('admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'),
+  async (req, res) => {
   const ma_cn = req.query.ma_cn || null;
   const cnFilter = ma_cn ? ' AND h.ma_cn = ?' : '';
   const params = ma_cn ? [ma_cn] : [];
@@ -99,7 +104,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/customers', authMiddleware, async (req, res) => {
+router.get('/customers', ...reportRoles, async (req, res) => {
   try {
     const [rows] = await pool.query(
       'SELECT * FROM khach_hang ORDER BY diem_tich_luy DESC LIMIT 100'

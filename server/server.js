@@ -23,6 +23,7 @@ const inventoryRoutes = require('./routes/inventory');
 const reportRoutes = require('./routes/reports');
 const aiRoutes = require('./routes/ai');
 const reservationRoutes = require('./routes/reservations');
+const permissionRoutes = require('./routes/permissions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,6 +40,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/reservations', reservationRoutes);
+app.use('/api/permissions', permissionRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'nha-hang-api' });

@@ -99,6 +99,39 @@
   margin-top: 0.1rem;
 }
 
+.chat-order-badge.has-order {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: var(--emerald);
+}
+
+.chat-actions,
+.chat-tips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.chat-action-btn,
+.chat-tip-btn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(167, 139, 250, 0.08);
+  color: var(--violet);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.chat-action-btn:hover,
+.chat-tip-btn:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
 .chat-order-badge {
   margin-left: auto;
   font-size: 0.7rem;

@@ -17,6 +17,38 @@ const HD_STATUS = {
 
 const HANG_CLASS = { dong: 'hang-dong', bac: 'hang-bac', vang: 'hang-vang', bach_kim: 'hang-bach_kim' };
 
+/** Trang → vai trò được phép (ten_vt trong CSDL) */
+const PAGE_ACCESS = {
+  dashboard: ['admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'],
+  tables: ['admin', 'thu_ngan', 'phuc_vu'],
+  kitchen: ['admin', 'bep'],
+  menu: ['admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'],
+  inventory: ['admin', 'kho'],
+  reservations: ['admin', 'thu_ngan', 'phuc_vu'],
+  reports: ['admin', 'thu_ngan'],
+  ai: ['admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'],
+  permissions: ['admin'],
+};
+
+const ROLE_LABELS = {
+  admin: 'Quản trị',
+  thu_ngan: 'Thu ngân',
+  phuc_vu: 'Phục vụ',
+  bep: 'Bếp',
+  kho: 'Kho',
+};
+
+function canAccessPage(name) {
+  const allowed = PAGE_ACCESS[name];
+  if (!allowed) return true;
+  return allowed.includes(user?.vai_tro);
+}
+
+function firstAllowedPage() {
+  const order = ['dashboard', 'tables', 'kitchen', 'menu', 'inventory', 'reservations', 'reports', 'ai', 'permissions'];
+  return order.find((p) => canAccessPage(p)) || 'dashboard';
+}
+
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
@@ -143,7 +175,56 @@ async function checkHealth() {
   }
 }
 
+function showAccessDenied(name) {
+  $$('.page').forEach((p) => p.classList.remove('active'));
+  $$('.nav-item').forEach((n) => n.classList.remove('active'));
+  $('#page-denied')?.classList.add('active');
+  const titles = {
+    dashboard: 'Tổng quan',
+    tables: 'Bàn & Order',
+    kitchen: 'Bếp',
+    menu: 'Thực đơn',
+    inventory: 'Kho',
+    reservations: 'Đặt bàn',
+    reports: 'Báo cáo',
+    ai: 'AI Insights',
+    permissions: 'Phân quyền',
+  };
+  const label = titles[name] || name;
+  const roleName = ROLE_LABELS[user?.vai_tro] || user?.vai_tro || 'chưa xác định';
+  $('#page-title').textContent = 'Không có quyền';
+  const msg = $('#denied-message');
+  if (msg) {
+    msg.innerHTML =
+      name === 'permissions'
+        ? 'Chỉ tài khoản có thẩm quyền <strong>Quản trị (admin)</strong> mới được sử dụng tính năng phân quyền. Vai trò hiện tại của bạn: <strong>' +
+          roleName +
+          '</strong>.'
+        : `Bạn (${roleName}) không có quyền truy cập <strong>${label}</strong>. Chỉ tài khoản có thẩm quyền phù hợp mới được sử dụng chức năng này.`;
+  }
+  toast('Không có quyền truy cập chức năng này', 'error');
+}
+
+function applyNavRBAC() {
+  $$('.nav-item').forEach((btn) => {
+    const page = btn.dataset.page;
+    const ok = canAccessPage(page);
+    btn.classList.toggle('hidden', !ok);
+    btn.disabled = !ok;
+  });
+  $$('.rbac-page-note').forEach((note) => {
+    const page = note.dataset.rbacNote;
+    note.classList.toggle('hidden', !canAccessPage(page));
+  });
+  const canPay = ['admin', 'thu_ngan'].includes(user?.vai_tro);
+  $('#btn-pay')?.classList.toggle('hidden', !canPay);
+}
+
 function setPage(name) {
+  if (!canAccessPage(name)) {
+    showAccessDenied(name);
+    return;
+  }
   $$('.page').forEach((p) => p.classList.remove('active'));
   $$('.nav-item').forEach((n) => n.classList.remove('active'));
   $(`#page-${name}`)?.classList.add('active');
@@ -157,6 +238,7 @@ function setPage(name) {
     reservations: 'Đặt bàn',
     reports: 'Báo cáo',
     ai: 'AI Insights',
+    permissions: 'Phân quyền',
   };
   $('#page-title').textContent = titles[name] || name;
   const loaders = {
@@ -168,6 +250,7 @@ function setPage(name) {
     reservations: () => (window.__loadReservations ? window.__loadReservations() : loadReservations()),
     reports: loadReports,
     ai: loadAiPage,
+    permissions: loadPermissions,
   };
   loaders[name]?.();
 }
@@ -224,11 +307,91 @@ function initMain() {
   checkHealth();
   setInterval(checkHealth, 30000);
   initChat();
-  if (!$('#chat-messages').children.length) {
+  applyNavRBAC();
+  if ($('#chat-messages') && !$('#chat-messages').children.length) {
     sendChatMessage('', true);
   }
-  setPage('dashboard');
+  setPage(firstAllowedPage());
 }
+
+let permissionsRoles = [];
+
+async function loadPermissions() {
+  const wrap = $('#permissions-table-wrap');
+  const rolesRef = $('#roles-reference');
+  if (!wrap) return;
+  try {
+    const [staff, roles] = await Promise.all([api('/permissions/staff'), api('/permissions/roles')]);
+    permissionsRoles = safeArray(roles);
+    rolesRef.innerHTML = permissionsRoles
+      .map(
+        (r) => `
+      <div class="item">
+        <div class="item-left"><strong>${safeString(ROLE_LABELS[r.ten_vt] || r.ten_vt)}</strong> <span class="hint">(${r.ten_vt})</span></div>
+        <span class="hint">${safeString(r.mo_ta, '—')}</span>
+      </div>`
+      )
+      .join('');
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Họ tên</th><th>Email</th><th>Chi nhánh</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+          ${safeArray(staff)
+            .map((nv) => {
+              const isSelf = nv.ma_nv === user?.ma_nv;
+              const roleOpts = permissionsRoles
+                .map(
+                  (r) =>
+                    `<option value="${r.ma_vt}" ${r.ma_vt === nv.ma_vt ? 'selected' : ''}>${ROLE_LABELS[r.ten_vt] || r.ten_vt}</option>`
+                )
+                .join('');
+              return `
+            <tr data-nv="${nv.ma_nv}">
+              <td>${safeString(nv.ho_ten)}${isSelf ? ' <span class="pill pill-info">Bạn</span>' : ''}</td>
+              <td>${safeString(nv.email)}</td>
+              <td>${safeString(nv.ten_cn)}</td>
+              <td><select class="perm-role input-grow" data-nv="${nv.ma_nv}" ${isSelf ? 'disabled title="Không đổi vai trò của chính mình tại đây"' : ''}>${roleOpts}</select></td>
+              <td><select class="perm-status input-grow" data-nv="${nv.ma_nv}" ${isSelf ? 'disabled' : ''}>
+                <option value="lam_viec" ${nv.trang_thai === 'lam_viec' ? 'selected' : ''}>Đang làm</option>
+                <option value="nghi" ${nv.trang_thai === 'nghi' ? 'selected' : ''}>Nghỉ</option>
+              </select></td>
+              <td>${isSelf ? '<span class="hint">—</span>' : `<button type="button" class="btn secondary btn-save-perm" data-nv="${nv.ma_nv}">Lưu</button>`}</td>
+            </tr>`;
+            })
+            .join('')}
+        </tbody>
+      </table>`;
+    wrap.querySelectorAll('.btn-save-perm').forEach((btn) => {
+      btn.addEventListener('click', () => savePermissionRow(+btn.dataset.nv));
+    });
+  } catch (e) {
+    wrap.innerHTML = emptyState('🔒', e.message);
+    toast(e.message, 'error');
+  }
+}
+
+async function savePermissionRow(maNv) {
+  const row = wrapQuery(`tr[data-nv="${maNv}"]`);
+  if (!row) return;
+  const ma_vt = +row.querySelector('.perm-role')?.value;
+  const trang_thai = row.querySelector('.perm-status')?.value;
+  try {
+    await api(`/permissions/staff/${maNv}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ma_vt, trang_thai }),
+    });
+    toast('Đã cập nhật phân quyền', 'success');
+    loadPermissions();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function wrapQuery(sel) {
+  return document.querySelector(sel);
+}
+
+$('#btn-reload-permissions')?.addEventListener('click', loadPermissions);
 
 async function loadDashboard() {
   if (typeof window.__loadDash === 'function') return window.__loadDash();
@@ -611,11 +774,13 @@ function updateChatOrderBadge() {
   const badge = $('#chat-order-badge');
   if (!badge) return;
   if (currentOrder) {
-    badge.textContent = `HD #${currentOrder.ma_hd} · Bàn ${currentOrder.so_ban}`;
-    badge.classList.remove('hidden');
+    badge.textContent = `Order #${currentOrder.ma_hd}`;
+    badge.title = `Hóa đơn #${currentOrder.ma_hd} · Bàn ${currentOrder.so_ban}`;
+    badge.classList.add('has-order');
   } else {
-    badge.textContent = 'Chưa mở order';
-    badge.classList.remove('hidden');
+    badge.textContent = '·';
+    badge.title = 'Chưa mở order — vẫn chat hỗ trợ bình thường';
+    badge.classList.remove('has-order');
   }
 }
 
@@ -635,7 +800,30 @@ function appendChatMsg(role, html) {
   return wrap;
 }
 
-function renderSuggestions(suggestions) {
+function formatChatAnswer(text) {
+  return escapeHtml(safeString(text, ''))
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+}
+
+function renderChatTips(tips) {
+  const items = Array.isArray(tips) ? tips.filter(Boolean) : [];
+  if (!items.length) return '';
+  return `<div class="chat-tips">${items
+    .map((t) => `<button type="button" class="chat-tip-btn" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>`)
+    .join('')}</div>`;
+}
+
+function renderChatActions(actions) {
+  const items = Array.isArray(actions) ? actions.filter((a) => a.page && canAccessPage(a.page)) : [];
+  if (!items.length) return '';
+  return `<div class="chat-actions">${items
+    .map((a) => `<button type="button" class="chat-action-btn" data-page="${a.page}">${escapeHtml(a.label)}</button>`)
+    .join('')}</div>`;
+}
+
+function renderSuggestions(suggestions, showOrderButtons = true) {
   const items = Array.isArray(suggestions) ? suggestions : [];
   if (!items.length) return '';
   return `<div class="chat-suggestions">${items
@@ -645,6 +833,9 @@ function renderSuggestions(suggestions) {
       const price = safeNumber(s.gia_ban, 0);
       const reason = safeString(s.ly_do, '');
       const emoji = menuEmoji(category);
+      const orderBtn = showOrderButtons
+        ? `<button type="button" class="btn-add-chat" data-mon="${safeString(s.ma_mon)}" data-name="${itemName}">+ Order</button>`
+        : '';
       return `
     <div class="chat-suggest-card">
       <span class="emoji">${emoji}</span>
@@ -652,10 +843,22 @@ function renderSuggestions(suggestions) {
         <div class="name">${itemName}</div>
         <div class="meta">${category} · ${fmt(price)}đ${reason ? ` · ${reason}` : ''}</div>
       </div>
-      <button type="button" class="btn-add-chat" data-mon="${safeString(s.ma_mon)}" data-name="${itemName}">+ Order</button>
+      ${orderBtn}
     </div>`;
     })
     .join('')}</div>`;
+}
+
+function bindChatExtras(container) {
+  container.querySelectorAll('.chat-tip-btn').forEach((btn) => {
+    btn.addEventListener('click', () => sendChatMessage(btn.dataset.q));
+  });
+  container.querySelectorAll('.chat-action-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setPage(btn.dataset.page);
+      toggleChat(false);
+    });
+  });
 }
 
 function bindSuggestionButtons(container) {
@@ -701,9 +904,15 @@ async function sendChatMessage(text, silent = false) {
       }),
     });
     typing.remove();
-    const answer = escapeHtml(safeString(data.answer, '')).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    const bubble = appendChatMsg('bot', answer + renderSuggestions(data.suggestions));
-    bindSuggestionButtons(bubble);
+    const showOrder = data.show_menu_actions !== false && !!data.suggestions?.length;
+    const html =
+      formatChatAnswer(data.answer) +
+      renderChatActions(data.actions) +
+      renderChatTips(data.tips) +
+      renderSuggestions(data.suggestions, showOrder);
+    const bubble = appendChatMsg('bot', html);
+    bindChatExtras(bubble);
+    if (showOrder) bindSuggestionButtons(bubble);
     if (data?.order) updateChatOrderBadge();
   } catch (e) {
     typing.remove();

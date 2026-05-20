@@ -1,10 +1,11 @@
 const express = require('express');
 const pool = require('../config/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
+const reservationRoles = [authMiddleware, requireRole('admin', 'thu_ngan', 'phuc_vu')];
 
 const router = express.Router();
 
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', ...reservationRoles, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT d.*, kh.ho_ten, b.so_ban, cn.ten_cn
@@ -20,7 +21,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', ...reservationRoles, async (req, res) => {
   const { ma_kh, ma_ban, ma_cn, ngay_gio, so_nguoi, ghi_chu } = req.body;
   try {
     const [r] = await pool.query(
@@ -34,7 +35,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.patch('/:id/status', authMiddleware, async (req, res) => {
+router.patch('/:id/status', ...reservationRoles, async (req, res) => {
   const { trang_thai } = req.body;
   try {
     await pool.query('UPDATE dat_ban SET trang_thai = ? WHERE ma_dat = ?', [
