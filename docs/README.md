@@ -21,6 +21,7 @@ Thư mục chứa toàn bộ tài liệu hướng dẫn. Bạn có thể **tải
 
 | Tài liệu | Tải về |
 |----------|--------|
+| **[HUONG_DAN_DEPLOY_TRYCLOUDFLARE.md](HUONG_DAN_DEPLOY_TRYCLOUDFLARE.md)** — **Deploy link `*.trycloudflare.com`** | [raw](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/HUONG_DAN_DEPLOY_TRYCLOUDFLARE.md) |
 | [HUONG_DAN_DEPLOY_RENDER_TIDB.md](HUONG_DAN_DEPLOY_RENDER_TIDB.md) — Render + TiDB (thay Railway) | [raw](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/HUONG_DAN_DEPLOY_RENDER_TIDB.md) |
 | [HUONG_DAN_DEPLOY.md](HUONG_DAN_DEPLOY.md) — Railway | [raw](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/HUONG_DAN_DEPLOY.md) |
 | [HUONG_DAN_KET_NOI_MYSQL.md](HUONG_DAN_KET_NOI_MYSQL.md) — MySQL & chạy local | [raw](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/HUONG_DAN_KET_NOI_MYSQL.md) |

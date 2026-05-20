@@ -49,7 +49,7 @@ cd d:\ducthuan\pho_ha_noi
 3. **Render** → Blueprint → repo `oder_code` → dán `DATABASE_URL`
 4. URL: `https://pho-ha-noi.onrender.com` (đổi tên: sửa `name:` trong `render.yaml`)
 
-Chi tiết: `HUONG_DAN_DEPLOY_RENDER_TIDB.md`
+Chi tiết tunnel: `HUONG_DAN_DEPLOY_TRYCLOUDFLARE.md` · Render: `HUONG_DAN_DEPLOY_RENDER_TIDB.md`
 
 ---
 
