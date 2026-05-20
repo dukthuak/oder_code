@@ -1,6 +1,18 @@
-# Deploy miễn phí (Railway)
+# Deploy miễn phí
 
 Repo GitHub: **https://github.com/dukthuak/oder_code**
+
+> **Railway hết free?** Dùng **[Render + TiDB](HUONG_DAN_DEPLOY_RENDER_TIDB.md)** hoặc tunnel nhanh: `.\scripts\tunnel-public.ps1`
+
+---
+
+## Deploy Render + TiDB (khuyến nghị)
+
+Xem **[HUONG_DAN_DEPLOY_RENDER_TIDB.md](HUONG_DAN_DEPLOY_RENDER_TIDB.md)**
+
+---
+
+## Deploy Railway (cũ)
 
 ## Bước 1 — Railway (5 phút)
 

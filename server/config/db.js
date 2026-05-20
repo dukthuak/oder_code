@@ -23,7 +23,14 @@ function buildPoolConfig() {
       connectionLimit: 10,
       charset: 'utf8mb4',
     };
-    if (process.env.DB_SSL === 'true') {
+    const host = url.hostname.toLowerCase();
+    const needSsl =
+      process.env.DB_SSL === 'true' ||
+      url.port === '4000' ||
+      host.includes('tidb') ||
+      host.includes('aws') ||
+      host.includes('ondigitalocean');
+    if (needSsl) {
       config.ssl = { rejectUnauthorized: false };
     }
     return config;

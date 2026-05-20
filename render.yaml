@@ -1,9 +1,10 @@
-# Deploy free: https://render.com → New Blueprint → connect repo
-# Cần MySQL riêng (Railway MySQL) — set biến DATABASE_URL trên Render
+# Deploy: https://dashboard.render.com → New + → Blueprint → repo oder_code
+# Database: TiDB Cloud (free) — xem docs/HUONG_DAN_DEPLOY_RENDER_TIDB.md
 services:
   - type: web
     name: pho-ha-noi
     runtime: node
+    plan: free
     rootDir: server
     buildCommand: npm install
     startCommand: npm start
@@ -13,3 +14,5 @@ services:
         value: "20"
       - key: DATABASE_URL
         sync: false
+      - key: DB_SSL
+        value: "true"

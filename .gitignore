@@ -7,3 +7,4 @@ server/.env
 Thumbs.db
 server/_tmp_*.js
 .railway/
+scripts/bin/
