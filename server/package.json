@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "Backend quản lý nhà hàng - Node.js + MySQL",
   "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "setup-db": "node scripts/setup-db.js"
+    "setup-db": "node scripts/setup-db.js",
+    "import-cloud-db": "node scripts/import-cloud-db.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

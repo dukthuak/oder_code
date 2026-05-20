@@ -1,0 +1,15 @@
+# Deploy free: https://render.com → New Blueprint → connect repo
+# Cần MySQL riêng (Railway MySQL) — set biến DATABASE_URL trên Render
+services:
+  - type: web
+    name: pho-ha-noi
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        sync: false
