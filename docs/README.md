@@ -10,7 +10,8 @@ Thư mục chứa toàn bộ tài liệu hướng dẫn. Bạn có thể **tải
 
 | Tài liệu | Mô tả | Tải về (GitHub) |
 |----------|--------|-----------------|
-| **[QUY-TRINH-LAM-WEB-PHO-HA-NOI.md](QUY-TRINH-LAM-WEB-PHO-HA-NOI.md)** | **Quy trình đầy đủ:** từ DB → API → web → deploy → có link HTTPS | [Tải file .md](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/QUY-TRINH-LAM-WEB-PHO-HA-NOI.md) |
+| **[QUY-TRINH-TOM-TAT.md](QUY-TRINH-TOM-TAT.md)** | **Tóm tắt** — chỉ phần quan trọng | [Tải .md](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/QUY-TRINH-TOM-TAT.md) |
+| [QUY-TRINH-LAM-WEB-PHO-HA-NOI.md](QUY-TRINH-LAM-WEB-PHO-HA-NOI.md) | Đầy đủ (chi tiết từng bước) | [Tải .md](https://raw.githubusercontent.com/dukthuak/oder_code/main/docs/QUY-TRINH-LAM-WEB-PHO-HA-NOI.md) |
 
 **Xem trên GitHub:** [docs/QUY-TRINH-LAM-WEB-PHO-HA-NOI.md](https://github.com/dukthuak/oder_code/blob/main/docs/QUY-TRINH-LAM-WEB-PHO-HA-NOI.md)
 
