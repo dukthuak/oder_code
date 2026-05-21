@@ -50,7 +50,12 @@ async function run() {
   await runFile(conn, path.join(goldenDir, '01_schema.sql'));
   await runFile(conn, path.join(goldenDir, '02_views.sql'));
   console.log('Import dữ liệu mẫu...');
-  await runSeedFromDocs(conn);
+  await runFile(conn, path.join(goldenDir, '03_seed.sql'));
+  try {
+    await runSeedFromDocs(conn);
+  } catch (e) {
+    console.warn('Seed bổ sung từ docs (tuỳ chọn):', e.message);
+  }
 
   const hash = await bcrypt.hash('password123', 10);
   await conn.query('USE ql_golden_taste');
