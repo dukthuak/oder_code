@@ -51,11 +51,9 @@ async function run() {
   await runFile(conn, path.join(goldenDir, '02_views.sql'));
   console.log('Import dữ liệu mẫu...');
   await runFile(conn, path.join(goldenDir, '03_seed.sql'));
-  try {
-    await runSeedFromDocs(conn);
-  } catch (e) {
-    console.warn('Seed bổ sung từ docs (tuỳ chọn):', e.message);
-  }
+  await runFile(conn, path.join(goldenDir, '04_chuc_nang_seed.sql'));
+  console.log('DB trống — thêm món/bàn/chức năng qua trang Quản trị trên web.');
+  console.log('(Tuỳ chọn) Nạp demo: npm run seed-demo');
 
   const hash = await bcrypt.hash('password123', 10);
   await conn.query('USE ql_golden_taste');

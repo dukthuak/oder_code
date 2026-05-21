@@ -72,6 +72,33 @@ async function searchMenu(intent, limit = 6) {
   return rows;
 }
 
+async function queryPopularMenu(limit = 5, maKh = null) {
+  if (maKh) {
+    const [history] = await pool.query(
+      `SELECT DISTINCT m.maMON AS ma_mon, m.tenMON AS ten_mon, m.donGIA AS gia_ban,
+              m.donVITINH AS don_vi, l.tenLOAI AS ten_dm
+       FROM CHITIET_HD ct
+       JOIN HOADON h ON ct.maHD = h.maHD
+       JOIN MONAN m ON ct.maMON = m.maMON
+       JOIN LOAIMON l ON m.maLOAI = l.maLOAI
+       WHERE h.maKH = ? AND m.trangthaiMON = 'Sẵn có'
+       ORDER BY ct.soLUONG DESC
+       LIMIT ?`,
+      [maKh, limit]
+    );
+    if (history.length) return history;
+  }
+  const [rows] = await pool.query(
+    `SELECT v.ma_mon, v.ten_mon, v.gia_ban, m.donVITINH AS don_vi, l.tenLOAI AS ten_dm
+     FROM vw_mon_ban_chay v
+     JOIN MONAN m ON v.ma_mon = m.maMON
+     JOIN LOAIMON l ON m.maLOAI = l.maLOAI
+     LIMIT ?`,
+    [limit]
+  );
+  return rows;
+}
+
 const ROLE_LABELS = {
   admin: 'Quản trị',
   thu_ngan: 'Thu ngân',
@@ -246,7 +273,6 @@ async function processChat(message, user, maKh, maHd) {
         ten_dm: r.ten_dm,
         gia_ban: Number(r.gia_ban),
         don_vi: r.don_vi,
-        mo_ta: r.mo_ta,
         ly_do: 'Món phổ biến',
       }));
       showMenuActions = true;
@@ -263,7 +289,7 @@ async function processChat(message, user, maKh, maHd) {
       '1. Badge *Mất kết nối* → chạy `npm start` trong thư mục `server`.\n' +
       '2. *Chưa đăng nhập* / 401 → đăng nhập lại.\n' +
       '3. *Không có quyền* → đúng vai trò (vd: Phân quyền chỉ **admin**).\n' +
-      '4. MySQL lỗi → kiểm tra `.env` và chạy `node scripts/setup-db.js`.\n\n' +
+      '4. MySQL lỗi → kiểm tra `.env` và chạy `npm run setup-db` trong thư mục `server`.\n\n' +
       'Mô tả chi tiết lỗi bạn gặp, mình gợi ý bước tiếp theo.';
     tips = ['Kiểm tra kết nối server', 'Hướng dẫn quyền'];
   } else if (intent === 'permissions') {
@@ -328,9 +354,8 @@ async function processChat(message, user, maKh, maHd) {
     answer = res.answer;
   } else if (intent === 'menu') {
     const menuIntent = matchIntent(message);
-    if (maKh > 0 && !menuIntent) {
-      const [rows] = await pool.query('CALL sp_ai_goi_y_mon(?, ?)', [maKh, 6]);
-      suggestions = rows[0] || rows;
+    if (maKh && !menuIntent) {
+      suggestions = await queryPopularMenu(6, maKh);
       source = 'customer_history';
     }
     if (menuIntent?.greeting) {
@@ -341,8 +366,7 @@ async function processChat(message, user, maKh, maHd) {
       suggestions = await searchMenu(menuIntent, menuIntent?.combo ? 4 : 6);
     }
     if (!suggestions.length) {
-      const [rows] = await pool.query('CALL sp_ai_goi_y_mon(?, ?)', [0, 5]);
-      suggestions = rows[0] || rows;
+      suggestions = await queryPopularMenu(5);
       source = 'popular';
     }
     const mapped = suggestions.map((r) => ({
@@ -351,7 +375,6 @@ async function processChat(message, user, maKh, maHd) {
       ten_dm: r.ten_dm,
       gia_ban: Number(r.gia_ban),
       don_vi: r.don_vi,
-      mo_ta: r.mo_ta,
       ly_do: r.ly_do || (source === 'customer_history' ? 'Đã từng order' : 'Phù hợp yêu cầu'),
     }));
     suggestions = mapped;
@@ -463,12 +486,40 @@ router.post('/anomaly', authMiddleware, requireRole('admin', 'kho'), async (req,
 router.get('/insights', ...aiRoles, async (req, res) => {
   try {
     const [top] = await pool.query('SELECT * FROM vw_mon_ban_chay LIMIT 5');
-    const [kho] = await pool.query('SELECT * FROM vw_BaoCaoTonKhoAnToan WHERE trangthaiKHO != "Ổn định" LIMIT 5');
-    const [nv] = await pool.query('SELECT * FROM vw_DoanhThuNhanVienThangNay ORDER BY doanhthuTHANG DESC LIMIT 3');
-    res.json({ top_mon: top, ton_kho: kho, doanh_thu_nv: nv });
+    const [kho] = await pool.query('SELECT * FROM vw_ton_kho_canh_bao LIMIT 5');
+    const [nv] = await pool.query(
+      'SELECT * FROM vw_DoanhThuNhanVienThangNay ORDER BY doanhthuTHANG DESC LIMIT 3'
+    );
+    const items = [];
+    top.forEach((m) =>
+      items.push({
+        ten_mon: m.ten_mon,
+        noi_dung: `${m.tong_sl || 0} phần bán`,
+        loai: 'top_mon',
+      })
+    );
+    kho.forEach((k) =>
+      items.push({
+        ten_nl: k.ten_nl,
+        noi_dung: `${k.trang_thai} — tồn ${k.ton_kho} ${k.don_vi}`,
+        loai: 'ton_kho',
+      })
+    );
+    nv.forEach((n) =>
+      items.push({
+        ten_mon: n.hotenNV,
+        noi_dung: `${n.chucVU}: ${fmtNum(n.doanhthuTHANG)}đ tháng này`,
+        loai: 'doanh_thu_nv',
+      })
+    );
+    res.json(items);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+function fmtNum(n) {
+  return new Intl.NumberFormat('vi-VN').format(Number(n) || 0);
+}
 
 module.exports = router;

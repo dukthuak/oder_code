@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
-const { mapRole, ROLE_TO_CHUC_VU } = require('../lib/golden');
+const { mapRole, chucVuFromMaVt, vtIdFromChucVu } = require('../lib/golden');
 
 const router = express.Router();
 
@@ -15,7 +15,9 @@ router.get('/staff', authMiddleware, requireRole('admin'), async (req, res) => {
     res.json(
       rows.map((r) => ({
         ...r,
+        ma_vt: vtIdFromChucVu(r.chucVU),
         vai_tro: mapRole(r.chucVU),
+        ten_cn: 'Golden Taste',
         trang_thai: 'lam_viec',
       }))
     );
@@ -35,7 +37,7 @@ router.get('/roles', authMiddleware, requireRole('admin'), async (req, res) => {
 
 router.patch('/staff/:id', authMiddleware, requireRole('admin'), async (req, res) => {
   const { ma_vt } = req.body;
-  const chucVU = ROLE_TO_CHUC_VU[ma_vt] || req.body.chucVU;
+  const chucVU = chucVuFromMaVt(ma_vt) || req.body.chucVU;
   if (!chucVU) return res.status(400).json({ error: 'Thiếu chức vụ' });
   try {
     await pool.query('UPDATE NHANVIEN SET chucVU = ? WHERE maNV = ?', [chucVU, req.params.id]);

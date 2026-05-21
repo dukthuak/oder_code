@@ -16,7 +16,7 @@ Dự án này là hệ thống quản lý nhà hàng nhỏ với:
 Mở terminal và chuyển đến thư mục `server`:
 
 ```bash
-cd d:\ducthuan\trang\server
+cd d:\ducthuan\Nha_hang_Golden_Taste\server
 ```
 
 Rồi chạy:
@@ -29,18 +29,18 @@ npm install
 Tạo file `.env` trong `server` nếu chưa có, với nội dung ví dụ:
 
 ```env
-PORT=3000
-DB_HOST=localhost
+PORT=3001
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_ROOT_USER=root
 DB_ROOT_PASSWORD=your_root_password
-DB_USER=root
-DB_PASSWORD=your_db_password
-DB_NAME=nha_hang_db
+DB_USER=nh_app
+DB_PASSWORD=App@123
+DB_NAME=ql_golden_taste
 ```
 
 Giải thích các biến:
-- `PORT`: cổng backend (mặc định 3000)
+- `PORT`: cổng backend (mặc định 3001)
 - `DB_HOST`, `DB_PORT`: máy chủ MySQL
 - `DB_ROOT_USER`, `DB_ROOT_PASSWORD`: dùng khi tạo database/migrations
 - `DB_USER`, `DB_PASSWORD`, `DB_NAME`: thông tin kết nối ứng dụng
@@ -53,11 +53,14 @@ npm run setup-db
 ```
 
 Lệnh này sẽ:
-- tạo database `nha_hang_db` nếu chưa tồn tại
-- cấu hình bảng và dữ liệu mẫu
-- thiết lập dữ liệu ban đầu cho ứng dụng
+- tạo database `ql_golden_taste` và bảng Golden Taste
+- thiết lập dữ liệu mẫu (nhân viên, món, chức năng web…)
 
-> Nếu cần reset database, có thể thêm biến môi trường `RESET_DB=1` trước khi chạy.
+Nếu DB đã có từ trước nhưng thiếu bảng mô tả chức năng:
+
+```bash
+npm run migrate-chuc-nang
+```
 
 ## 5. Chạy server
 Trong thư mục `server`:
@@ -103,9 +106,19 @@ Một số endpoint chính:
 - `POST /api/ai/chat`: chat AI
 
 ## 9. Kiểm tra nhanh
-- Mở `http://localhost:3000` để xem giao diện
-- Truy cập `http://localhost:3000/api/health` để xác nhận backend OK
+- Mở `http://localhost:3001` để xem giao diện
+- Truy cập `http://localhost:3001/api/health` để xác nhận backend OK
 - Nếu gặp lỗi kết nối MySQL, kiểm tra `.env` và MySQL đã chạy
+
+### Lỗi `EADDRINUSE` port 3001
+Cổng 3001 đang bị server cũ chiếm. Cách xử lý:
+
+```powershell
+cd d:\ducthuan\Nha_hang_Golden_Taste\server
+npm run restart
+```
+
+Hoặc double-click `MO_DU_AN.bat` (tự đóng process cũ trước khi chạy).
 
 ## 10. Ghi chú
 - File backend chính: `server/server.js`

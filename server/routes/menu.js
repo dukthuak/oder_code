@@ -10,12 +10,12 @@ router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT m.maMON AS ma_mon, m.tenMON AS ten_mon, m.donGIA AS gia_ban, m.donVITINH AS don_vi,
-              m.trangthaiMON AS trang_thai, m.mo_ta, l.maLOAI AS ma_dm, l.tenLOAI AS ten_dm
+              m.trangthaiMON AS trang_thai, l.maLOAI AS ma_dm, l.tenLOAI AS ten_dm
        FROM MONAN m
        JOIN LOAIMON l ON m.maLOAI = l.maLOAI
        ORDER BY l.tenLOAI, m.tenMON`
     );
-    res.json(rows.map((r) => mapMonRow({ ...r, mo_ta: r.mo_ta || null })));
+    res.json(rows.map(mapMonRow));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

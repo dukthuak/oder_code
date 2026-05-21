@@ -76,14 +76,18 @@ router.get(
                 CASE WHEN diemTICHLUY >= 400 THEN 'bach_kim' WHEN diemTICHLUY >= 200 THEN 'vang' ELSE 'dong' END AS hang_thanh_vien
          FROM KHACHHANG ORDER BY diemTICHLUY DESC LIMIT 5`
       );
+      const num = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
       res.json({
-        doanh_thu_hom_nay: Number(revToday.doanh_thu),
-        so_hd_hom_nay: revToday.so_hd,
-        order_dang_mo: openOrders.cnt,
-        ban_dang_dung: tables.dang_dung,
-        ban_dat_truoc: tables.dat_truoc,
-        ban_trong: tables.trong,
-        mon_bep_cho: kitchen.cnt,
+        doanh_thu_hom_nay: num(revToday.doanh_thu),
+        so_hd_hom_nay: num(revToday.so_hd),
+        order_dang_mo: num(openOrders.cnt),
+        ban_dang_dung: num(tables.dang_dung),
+        ban_dat_truoc: num(tables.dat_truoc),
+        ban_trong: num(tables.trong),
+        mon_bep_cho: num(kitchen.cnt),
         gan_day: recent.map(mapHdRow),
         khach_vip: topKh,
       });
@@ -93,12 +97,34 @@ router.get(
   }
 );
 
+router.get('/customers', authMiddleware, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT maKH AS ma_kh, tenKH AS ho_ten, SDT AS sdt, diemTICHLUY AS diem_tich_luy
+       FROM KHACHHANG ORDER BY tenKH`
+    );
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/inventory-alerts', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT * FROM vw_ton_kho_canh_bao ORDER BY ton_kho ASC LIMIT 20`
     );
-    res.json(rows);
+    res.json(
+      rows.map((r) => ({
+        ...r,
+        muc_canh_bao:
+          r.trang_thai === 'Cần nhập gấp'
+            ? 'het_hang'
+            : r.trang_thai === 'Sắp hết'
+              ? 'sap_het'
+              : 'on_dinh',
+      }))
+    );
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

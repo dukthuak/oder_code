@@ -6,6 +6,16 @@ const khoRoles = [authMiddleware, requireRole('admin', 'kho')];
 
 const router = express.Router();
 
+function mapAlertRow(r) {
+  const muc =
+    r.trang_thai === 'Cần nhập gấp'
+      ? 'het_hang'
+      : r.trang_thai === 'Sắp hết'
+        ? 'sap_het'
+        : 'on_dinh';
+  return { ...r, muc_canh_bao: muc };
+}
+
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -22,7 +32,7 @@ router.get('/', async (req, res) => {
 router.get('/alerts', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM vw_ton_kho_canh_bao');
-    res.json(rows);
+    res.json(rows.map(mapAlertRow));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

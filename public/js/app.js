@@ -28,6 +28,7 @@ const PAGE_ACCESS = {
   reports: ['admin', 'thu_ngan'],
   ai: ['admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'],
   permissions: ['admin'],
+  admin: ['admin'],
 };
 
 const ROLE_LABELS = {
@@ -45,7 +46,18 @@ function canAccessPage(name) {
 }
 
 function firstAllowedPage() {
-  const order = ['dashboard', 'tables', 'kitchen', 'menu', 'inventory', 'reservations', 'reports', 'ai', 'permissions'];
+  const order = [
+    'dashboard',
+    'tables',
+    'kitchen',
+    'menu',
+    'inventory',
+    'reservations',
+    'reports',
+    'ai',
+    'permissions',
+    'admin',
+  ];
   return order.find((p) => canAccessPage(p)) || 'dashboard';
 }
 
@@ -115,7 +127,18 @@ const MENU_EMOJI = {
 };
 
 function pill(text, type = '') {
-  return `<span class="pill ${type}">${text}</span>`;
+  return `<span class="pill ${type}">${safeString(text, '—')}</span>`;
+}
+
+function tableStatusLabel(trangThai) {
+  const mapped = TABLE_STATUS[trangThai];
+  if (mapped?.label) return mapped.label;
+  return safeString(trangThai, '—');
+}
+
+function tableStatusPill(trangThai) {
+  const mapped = TABLE_STATUS[trangThai];
+  return pill(tableStatusLabel(trangThai), mapped?.pill || '');
 }
 
 function emptyState(icon, msg) {
@@ -159,6 +182,7 @@ function showScreen(id) {
 async function checkHealth() {
   const badge = $('#conn-badge');
   const loginConn = $('#login-conn');
+  loadLoginHeroFeatures();
   try {
     await fetch(`${API}/health`);
     badge?.classList.remove('offline');
@@ -189,6 +213,7 @@ function showAccessDenied(name) {
     reports: 'Báo cáo',
     ai: 'AI Insights',
     permissions: 'Phân quyền',
+    admin: 'Quản trị',
   };
   const label = titles[name] || name;
   const roleName = ROLE_LABELS[user?.vai_tro] || user?.vai_tro || 'chưa xác định';
@@ -239,8 +264,14 @@ function setPage(name) {
     reports: 'Báo cáo',
     ai: 'AI Insights',
     permissions: 'Phân quyền',
+    admin: 'Quản trị',
+    permissions: 'Quản trị',
   };
   $('#page-title').textContent = titles[name] || name;
+  if (name === 'permissions') {
+    window.__adminTab = 'staff';
+    name = 'admin';
+  }
   const loaders = {
     dashboard: loadDashboard,
     tables: loadTables,
@@ -250,7 +281,8 @@ function setPage(name) {
     reservations: () => (window.__loadReservations ? window.__loadReservations() : loadReservations()),
     reports: loadReports,
     ai: loadAiPage,
-    permissions: loadPermissions,
+    permissions: () => setPage('admin'),
+    admin: () => (window.loadAdminHub ? window.loadAdminHub() : null),
   };
   loaders[name]?.();
 }
@@ -393,6 +425,170 @@ function wrapQuery(sel) {
 
 $('#btn-reload-permissions')?.addEventListener('click', loadPermissions);
 
+const FEATURE_ROLE_OPTS = ['admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'];
+let featureAdminCache = [];
+
+function renderLoginHeroFeatures(items) {
+  const ul = $('#login-hero-features');
+  if (!ul) return;
+  const list = safeArray(items)
+    .filter((f) => f.hien_thi && f.ma_trang !== 'admin' && f.ma_trang !== 'admin_features')
+    .slice(0, 5);
+  if (!list.length) return;
+  ul.innerHTML = list.map((f) => `<li>${safeString(f.icon, '📌')} ${safeString(f.ten_chuc_nang, '')}</li>`).join('');
+}
+
+function renderFeaturePreview(items) {
+  const ul = $('#feature-preview');
+  if (!ul) return;
+  const list = safeArray(items).filter((f) => f.hien_thi && f.ma_trang !== 'admin_features');
+  ul.innerHTML = list.length
+    ? list.map((f) => `<li>${safeString(f.icon, '📌')} ${safeString(f.ten_chuc_nang, '')} — ${safeString(f.mo_ta, '').slice(0, 60)}…</li>`).join('')
+    : '<li class="hint">Chưa có chức năng hiển thị</li>';
+}
+
+async function loadLoginHeroFeatures() {
+  try {
+    const rows = safeArray(await fetch(`${API}/features`).then((r) => r.json()));
+    renderLoginHeroFeatures(rows);
+  } catch {
+    /* giữ nội dung mặc định trong HTML */
+  }
+}
+
+function buildFeatureRoleChecks(selected = []) {
+  const wrap = $('#feat-roles');
+  if (!wrap) return;
+  const sel = new Set(safeArray(selected));
+  wrap.innerHTML = FEATURE_ROLE_OPTS.map(
+    (r) =>
+      `<label class="role-check"><input type="checkbox" name="feat-role" value="${r}" ${sel.has(r) ? 'checked' : ''}> ${ROLE_LABELS[r] || r}</label>`
+  ).join('');
+}
+
+function getSelectedFeatureRoles() {
+  return [...document.querySelectorAll('#feat-roles input:checked')].map((el) => el.value);
+}
+
+function resetFeatureForm() {
+  $('#feat-ma-cn').value = '';
+  $('#feat-ma-trang').value = '';
+  $('#feat-ma-trang').disabled = false;
+  $('#feat-ten').value = '';
+  $('#feat-icon').value = '📌';
+  $('#feat-thu-tu').value = '1';
+  $('#feat-mo-ta').value = '';
+  $('#feat-api').value = '';
+  $('#feat-hien-thi').checked = true;
+  $('#btn-feature-delete')?.classList.add('hidden');
+  $('#feature-form-title').textContent = 'Thêm chức năng mới';
+  buildFeatureRoleChecks(['admin']);
+}
+
+function fillFeatureForm(f) {
+  $('#feat-ma-cn').value = f.ma_cn;
+  $('#feat-ma-trang').value = f.ma_trang;
+  $('#feat-ma-trang').disabled = true;
+  $('#feat-ten').value = f.ten_chuc_nang;
+  $('#feat-icon').value = f.icon || '📌';
+  $('#feat-thu-tu').value = f.thu_tu ?? 0;
+  $('#feat-mo-ta').value = f.mo_ta || '';
+  $('#feat-api').value = f.api_mo_ta || '';
+  $('#feat-hien-thi').checked = !!f.hien_thi;
+  $('#btn-feature-delete')?.classList.remove('hidden');
+  $('#feature-form-title').textContent = `Sửa: ${safeString(f.ten_chuc_nang, '—')}`;
+  buildFeatureRoleChecks(f.vai_tro);
+}
+
+async function loadFeatureAdmin() {
+  const wrap = $('#features-list-wrap');
+  if (!wrap) return;
+  try {
+    featureAdminCache = safeArray(await api('/features/all'));
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th></th><th>Trang</th><th>Tên</th><th>Vai trò</th><th>TT</th><th></th></tr></thead>
+        <tbody>
+          ${featureAdminCache
+            .map(
+              (f) => `
+            <tr>
+              <td>${safeString(f.icon, '📌')}</td>
+              <td><code>${safeString(f.ma_trang)}</code></td>
+              <td>${safeString(f.ten_chuc_nang)}</td>
+              <td class="hint">${safeArray(f.vai_tro).map((r) => ROLE_LABELS[r] || r).join(', ')}</td>
+              <td>${f.hien_thi ? pill('Hiện', 'pill-success') : pill('Ẩn', 'pill-warning')}</td>
+              <td><button type="button" class="btn ghost btn-sm btn-edit-feat" data-id="${f.ma_cn}">Sửa</button></td>
+            </tr>`
+            )
+            .join('')}
+        </tbody>
+      </table>`;
+    wrap.querySelectorAll('.btn-edit-feat').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const item = featureAdminCache.find((x) => x.ma_cn === btn.dataset.id);
+        if (item) fillFeatureForm(item);
+      });
+    });
+    renderFeaturePreview(featureAdminCache);
+    renderLoginHeroFeatures(featureAdminCache);
+    if (!document.querySelector('#feat-ma-cn')?.value) resetFeatureForm();
+  } catch (e) {
+    const hint =
+      e.message?.includes('CHUC_NANG') || e.message?.includes('migrate-chuc-nang')
+        ? `${e.message}<br><br>Trong thư mục <code>server</code> chạy: <strong>npm run migrate-chuc-nang</strong> rồi tải lại trang.`
+        : e.message;
+    wrap.innerHTML = emptyState('⚙️', hint);
+    toast(e.message, 'error');
+  }
+}
+
+$('#btn-feature-new')?.addEventListener('click', resetFeatureForm);
+$('#btn-feature-reload')?.addEventListener('click', loadFeatureAdmin);
+$('#btn-feature-cancel')?.addEventListener('click', resetFeatureForm);
+
+$('#feature-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ma_cn = $('#feat-ma-cn').value;
+  const body = {
+    ma_trang: $('#feat-ma-trang').value.trim(),
+    ten_chuc_nang: $('#feat-ten').value.trim(),
+    icon: $('#feat-icon').value.trim() || '📌',
+    mo_ta: $('#feat-mo-ta').value.trim(),
+    api_mo_ta: $('#feat-api').value.trim() || null,
+    thu_tu: safeInt($('#feat-thu-tu').value, 1),
+    hien_thi: $('#feat-hien-thi').checked,
+    vai_tro: getSelectedFeatureRoles(),
+  };
+  if (!getSelectedFeatureRoles().length) return toast('Chọn ít nhất một vai trò', 'error');
+  try {
+    if (ma_cn) {
+      await api(`/features/${ma_cn}`, { method: 'PUT', body: JSON.stringify(body) });
+      toast('Đã cập nhật chức năng', 'success');
+    } else {
+      await api('/features', { method: 'POST', body: JSON.stringify(body) });
+      toast('Đã thêm chức năng', 'success');
+    }
+    resetFeatureForm();
+    loadFeatureAdmin();
+  } catch (ex) {
+    toast(ex.message, 'error');
+  }
+});
+
+$('#btn-feature-delete')?.addEventListener('click', async () => {
+  const ma_cn = $('#feat-ma-cn').value;
+  if (!ma_cn || !confirm('Xóa chức năng này?')) return;
+  try {
+    await api(`/features/${ma_cn}`, { method: 'DELETE' });
+    toast('Đã xóa', 'success');
+    resetFeatureForm();
+    loadFeatureAdmin();
+  } catch (ex) {
+    toast(ex.message, 'error');
+  }
+});
+
 async function loadDashboard() {
   if (typeof window.__loadDash === 'function') return window.__loadDash();
   try {
@@ -458,7 +654,7 @@ async function loadTables() {
         (t) => `
     <div class="table-card ${t.trang_thai}" data-ban="${t.ma_ban}" data-soban="${t.so_ban}">
       <span class="num">${t.so_ban}</span>
-      ${pill((TABLE_STATUS[t.trang_thai] || { label: t.trang_thai }).label, (TABLE_STATUS[t.trang_thai] || {}).pill || '')}
+      ${tableStatusPill(t.trang_thai)}
       <span class="meta">${t.suc_chua} chỗ</span>
     </div>`
       )
@@ -485,7 +681,7 @@ async function openTable(maBan, soBan) {
     if (!hd) {
       const created = await api('/orders', {
         method: 'POST',
-        body: JSON.stringify({ ma_ban: +maBan, ma_cn: user.ma_cn }),
+        body: JSON.stringify({ ma_ban: maBan, ma_cn: user.ma_cn }),
       });
       hd = { ma_hd: created.ma_hd, ma_ban: maBan, so_ban: soBan };
       toast(`Đã mở order #${created.ma_hd} bàn ${soBan}`, 'success');
@@ -503,12 +699,13 @@ async function openTable(maBan, soBan) {
 
 async function refreshOrder() {
   if (!currentOrder) return;
-  const items = await api(`/orders/${currentOrder.ma_hd}/details`);
+  const items = safeArray(await api(`/orders/${currentOrder.ma_hd}/details`));
+  const QT_LABELS = { cho: 'Chờ bếp', dang_nau: 'Đang nấu', xong: 'Đã xong' };
   let total = 0;
   $('#order-items').innerHTML = items.length
     ? items
         .map((i) => {
-          const t = i.so_luong * i.don_gia;
+          const t = safeNumber(i.so_luong, 0) * safeNumber(i.don_gia, 0);
           total += t;
           const st =
             i.trang_thai_mon === 'xong'
@@ -516,7 +713,8 @@ async function refreshOrder() {
               : i.trang_thai_mon === 'dang_nau'
                 ? 'pill-warning'
                 : '';
-          return `<div class="item"><span>${i.ten_mon} ×${i.so_luong}</span><span>${fmt(t)}đ ${pill(i.trang_thai_mon, st)}</span></div>`;
+          const qtLabel = QT_LABELS[i.trang_thai_mon] || safeString(i.trang_thai_mon, '—');
+          return `<div class="item"><span>${safeString(i.ten_mon, '—')} ×${safeNumber(i.so_luong, 0)}</span><span>${fmt(t)}đ ${pill(qtLabel, st)}</span></div>`;
         })
         .join('')
     : emptyState('🛒', 'Chưa có món — hỏi AI bên phải');
@@ -631,7 +829,7 @@ async function loadMenu() {
         <span class="cat">${m.ten_dm}</span>
         <h4>${m.ten_mon}</h4>
         <p class="price">${fmt(m.gia_ban)}đ <small>/ ${m.don_vi}</small></p>
-        <div class="footer">${pill(m.trang_thai, m.trang_thai === 'con' ? 'pill-con' : 'pill-danger')}</div></div>
+        <div class="footer">${pill(m.trang_thai === 'con' ? 'Còn' : safeString(m.trang_thai, '—'), m.trang_thai === 'con' ? 'pill-con' : 'pill-danger')}</div></div>
     </div>`
       )
       .join('');
@@ -669,18 +867,20 @@ async function loadInventory() {
 }
 
 async function loadReservations() {
+  if (typeof window.__loadReservations === 'function') return window.__loadReservations();
   try {
-    const rows = await api('/reservations');
+    const rows = safeArray(await api('/reservations'));
+    const sp = { cho: 'pill-warning', xac_nhan: 'pill-success', huy: 'pill-danger' };
     $('#reservations-list').innerHTML = rows.length
       ? rows
           .map(
             (d) => `
       <div class="reservation-card">
         <div>
-          <div class="guest">${d.ho_ten || 'Walk-in'}</div>
-          <div class="detail">Bàn ${d.so_ban} · ${new Date(d.ngay_gio).toLocaleString('vi-VN')}</div>
+          <div class="guest">${safeString(d.ho_ten, 'Walk-in')}</div>
+          <div class="detail">Bàn ${safeString(d.so_ban, '—')} · ${safeNumber(d.so_nguoi, 2)} người · ${new Date(d.ngay_gio).toLocaleString('vi-VN')}</div>
         </div>
-        ${pill(d.trang_thai, 'pill-info')}
+        ${pill(safeString(d.trang_thai, 'xac_nhan'), sp[d.trang_thai] || 'pill-info')}
       </div>`
           )
           .join('')
@@ -696,7 +896,8 @@ async function loadReports() {
 
 async function loadAiPage() {
   try {
-    const rows = await api('/ai/insights');
+    const data = await api('/ai/insights');
+    const rows = Array.isArray(data) ? data : [];
     if (rows.length) renderAi(rows);
   } catch (_) {}
 }
@@ -761,8 +962,8 @@ function renderAi(rows) {
         .map(
           (r) => `
       <div class="item">
-        <span>${r.ten_mon || r.ten_nl || r.loai}<span class="ai-tag">AI</span></span>
-        <span class="ai-insight-text">${r.noi_dung || r.gia_tri}</span>
+        <span>${safeString(r.ten_mon || r.ten_nl || r.loai, '—')}<span class="ai-tag">AI</span></span>
+        <span class="ai-insight-text">${safeString(r.noi_dung || r.gia_tri, '—')}</span>
       </div>`
         )
         .join('')

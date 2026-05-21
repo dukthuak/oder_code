@@ -12,9 +12,11 @@ npm run setup-db
 npm start
 ```
 
-Mở http://localhost:3001 — đăng nhập `nv002@goldentaste.vn` / `password123`
+Mở http://localhost:3001
+
+**Demo:** Admin `nv001@goldentaste.vn` / `password123` → **Quản trị** → nhập dữ liệu (danh mục, món, bàn…). DB mới chỉ có 1 admin; không còn file SQL điền sẵn.
 
 ## CSDL
 
-- Schema: `database/golden_taste/` (theo `docs/QL_cuahanggoldentaste.sql`)
+- Schema MySQL: `database/golden_taste/` — xem `database/README.md`
 - Truy vấn mẫu: `docs/TRUY-VAN-MAU.sql`

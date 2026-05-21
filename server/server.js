@@ -24,9 +24,12 @@ const reportRoutes = require('./routes/reports');
 const aiRoutes = require('./routes/ai');
 const reservationRoutes = require('./routes/reservations');
 const permissionRoutes = require('./routes/permissions');
+const featureRoutes = require('./routes/features');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
+const pool = require('./config/db');
 
 app.use(cors());
 app.use(express.json());
@@ -41,6 +44,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/permissions', permissionRoutes);
+app.use('/api/features', featureRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'nha-hang-api' });
@@ -50,6 +55,19 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+async function checkSchema() {
+  try {
+    await pool.query('SELECT 1 FROM CHUC_NANG LIMIT 1');
+  } catch (e) {
+    if (e.code === 'ER_NO_SUCH_TABLE') {
+      console.warn(
+        '[DB] Thiếu bảng CHUC_NANG — chạy trong thư mục server: npm run migrate-chuc-nang'
+      );
+    }
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Server: http://localhost:${PORT}`);
+  checkSchema();
 });

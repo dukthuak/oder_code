@@ -172,7 +172,7 @@
           method: 'POST',
           body: JSON.stringify({
             ma_kh: safeNumber(document.getElementById('res-kh')?.value, 0),
-            ma_ban: safeNumber(document.getElementById('res-ban')?.value, 0),
+            ma_ban: safeString(document.getElementById('res-ban')?.value, ''),
             ma_cn: user?.ma_cn ?? null,
             ngay_gio: new Date(dt).toISOString(),
             so_nguoi: Math.max(1, safeNumber(document.getElementById('res-nguoi')?.value, 1)),

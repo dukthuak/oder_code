@@ -8,10 +8,11 @@
   },
   "scripts": {
     "start": "node server.js",
+    "restart": "node scripts/free-port.js && node server.js",
     "dev": "node --watch server.js",
     "setup-db": "node scripts/setup-golden-db.js",
-    "setup-db-legacy": "node scripts/setup-db.js",
-    "setup-db-golden": "node scripts/setup-golden-db.js",
+    "migrate-chuc-nang": "node scripts/migrate-chuc-nang.js",
+    "seed-demo": "node scripts/seed-demo-full.js",
     "import-cloud-db": "node scripts/import-cloud-db.js"
   },
   "dependencies": {

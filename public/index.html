@@ -26,7 +26,7 @@
             <h1>Nhà hàng Golden Taste</h1>
             <p>Hệ thống quản lý nhà hàng — Order realtime & AI</p>
           </div>
-          <ul class="hero-features">
+          <ul class="hero-features" id="login-hero-features">
             <li>📊 Dashboard doanh thu trực tiếp</li>
             <li>🪑 Quản lý bàn & order tức thì</li>
             <li>✨ Chat AI gợi ý món thông minh</li>
@@ -47,7 +47,7 @@
               </div>
             </div>
             <p class="hint">Chọn tài khoản demo hoặc nhập email để bắt đầu.</p>
-            <p class="hint rbac-login-hint">🔐 Mỗi vai trò chỉ thấy các chức năng được phép. <strong>Phân quyền nhân viên</strong> chỉ dùng được với tài khoản <strong>Quản trị (admin)</strong>.</p>
+            <p class="hint rbac-login-hint">🔐 Đăng nhập <strong>Quản trị</strong> để vào <strong>Quản trị</strong> và nhập dữ liệu (danh mục, món, bàn…) vào database.</p>
             <form id="login-form">
               <label>Email</label>
               <input type="email" id="login-email" value="nv002@goldentaste.vn" required>
@@ -89,7 +89,7 @@
           <button class="nav-item" data-page="reservations" data-icon="📅"><span>Đặt bàn</span></button>
           <button class="nav-item" data-page="reports" data-icon="📈"><span>Báo cáo</span></button>
           <button class="nav-item nav-ai" data-page="ai" data-icon="✨"><span>AI Insights</span></button>
-          <button class="nav-item nav-admin-only" data-page="permissions" data-icon="🔐"><span>Phân quyền</span></button>
+          <button class="nav-item nav-admin-only" data-page="admin" data-icon="⚙️"><span>Quản trị</span></button>
         </nav>
         <div class="sidebar-footer">
           <button id="logout-btn" class="btn ghost full"><span>Đăng xuất</span></button>
@@ -256,26 +256,217 @@
           </article>
         </section>
 
-        <!-- PERMISSIONS (admin only) -->
-        <section id="page-permissions" class="page">
-          <div class="rbac-banner">
-            <span class="rbac-banner-icon">🔐</span>
+        <!-- TRUNG TÂM QUẢN TRỊ (admin only) -->
+        <section id="page-admin" class="page">
+          <div class="rbac-banner admin-hub-banner">
+            <span class="rbac-banner-icon">⚙️</span>
             <div>
-              <strong>Quản lý phân quyền nhân viên</strong>
-              <p>Chỉ tài khoản có thẩm quyền (vai trò <strong>Quản trị — admin</strong>) mới được sử dụng tính năng phân quyền. Các vai trò khác không thấy mục này trên menu.</p>
+              <strong>Trung tâm Quản trị — Nhập dữ liệu</strong>
+              <p>Thêm danh mục, món, bàn, nhân viên, khách, kho và mô tả chức năng trực tiếp vào database. Không cần sửa file SQL.</p>
             </div>
           </div>
-          <article class="card">
-            <div class="card-head">
-              <h3>Danh sách nhân viên & vai trò</h3>
-              <button type="button" id="btn-reload-permissions" class="btn ghost">Làm mới</button>
+
+          <nav class="admin-tabs" id="admin-tabs">
+            <button type="button" class="admin-tab active" data-admin-tab="overview">Tổng quan</button>
+            <button type="button" class="admin-tab" data-admin-tab="features">Chức năng</button>
+            <button type="button" class="admin-tab" data-admin-tab="categories">Danh mục</button>
+            <button type="button" class="admin-tab" data-admin-tab="menu">Món ăn</button>
+            <button type="button" class="admin-tab" data-admin-tab="tables">Bàn</button>
+            <button type="button" class="admin-tab" data-admin-tab="staff">Nhân viên</button>
+            <button type="button" class="admin-tab" data-admin-tab="customers">Khách hàng</button>
+            <button type="button" class="admin-tab" data-admin-tab="inventory">Kho</button>
+          </nav>
+
+          <div id="admin-panel-overview" class="admin-tab-panel active">
+            <article class="card admin-guide-card">
+              <h3>📋 Thứ tự nhập dữ liệu gợi ý</h3>
+              <ol class="admin-guide-list">
+                <li><strong>Danh mục</strong> — tạo loại món (Phở, Đồ uống…)</li>
+                <li><strong>Món ăn</strong> — thêm từng món và giá</li>
+                <li><strong>Bàn</strong> — khai báo bàn phục vụ</li>
+                <li><strong>Chức năng</strong> — mô tả từng màn hình web (hiện trên trang đăng nhập)</li>
+                <li><strong>Nhân viên / Khách / Kho</strong> — bổ sung khi cần</li>
+              </ol>
+            </article>
+            <div id="admin-stats-grid" class="stats-grid" style="margin-top:1rem"></div>
+          </div>
+
+          <div id="admin-panel-features" class="admin-tab-panel">
+            <div class="feature-admin-grid">
+              <article class="card">
+                <div class="card-head">
+                  <h3>Danh sách chức năng</h3>
+                  <div class="toolbar">
+                    <button type="button" id="btn-feature-new" class="btn primary btn-sm">+ Thêm</button>
+                    <button type="button" id="btn-feature-reload" class="btn ghost btn-sm">Làm mới</button>
+                  </div>
+                </div>
+                <div id="features-list-wrap" class="data-table-wrap"></div>
+              </article>
+              <article class="card feature-form-card">
+                <div class="card-head"><h3 id="feature-form-title">Thêm / sửa chức năng</h3></div>
+                <form id="feature-form" class="feature-form">
+                  <input type="hidden" id="feat-ma-cn" value="">
+                  <div class="field">
+                    <label>Mã trang (slug)</label>
+                    <input type="text" id="feat-ma-trang" placeholder="vd: dashboard, tables" required>
+                  </div>
+                  <div class="field">
+                    <label>Tên chức năng</label>
+                    <input type="text" id="feat-ten" placeholder="Tổng quan" required>
+                  </div>
+                  <div class="field-row">
+                    <div class="field">
+                      <label>Icon</label>
+                      <input type="text" id="feat-icon" maxlength="8" value="📌">
+                    </div>
+                    <div class="field">
+                      <label>Thứ tự</label>
+                      <input type="number" id="feat-thu-tu" min="0" value="1">
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>Mô tả</label>
+                    <textarea id="feat-mo-ta" rows="4" required></textarea>
+                  </div>
+                  <div class="field">
+                    <label>API liên quan</label>
+                    <textarea id="feat-api" rows="2"></textarea>
+                  </div>
+                  <div class="field">
+                    <label>Vai trò được phép</label>
+                    <div id="feat-roles" class="role-checkboxes"></div>
+                  </div>
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="feat-hien-thi" checked> Hiển thị trang đăng nhập
+                  </label>
+                  <div class="feature-form-actions">
+                    <button type="submit" class="btn primary">Lưu</button>
+                    <button type="button" id="btn-feature-cancel" class="btn ghost">Hủy</button>
+                    <button type="button" id="btn-feature-delete" class="btn danger hidden">Xóa</button>
+                  </div>
+                </form>
+              </article>
             </div>
-            <div id="permissions-table-wrap" class="data-table-wrap"></div>
-          </article>
-          <article class="card" style="margin-top:1rem">
-            <div class="card-head"><h3>Vai trò trong hệ thống</h3></div>
-            <div id="roles-reference" class="list-rich"></div>
-          </article>
+            <article class="card" style="margin-top:1rem">
+              <div class="card-head"><h3>Xem trước trang đăng nhập</h3></div>
+              <ul id="feature-preview" class="hero-features preview-list"></ul>
+            </article>
+          </div>
+
+          <div id="admin-panel-categories" class="admin-tab-panel">
+            <article class="card">
+              <form id="admin-cat-form" class="feature-form admin-inline-form">
+                <div class="field-row">
+                  <div class="field" style="flex:1">
+                    <label>Tên danh mục mới</label>
+                    <input type="text" id="admin-cat-ten" placeholder="Ví dụ: Phở, Đồ uống" required>
+                  </div>
+                  <button type="submit" class="btn primary" style="align-self:flex-end">+ Thêm danh mục</button>
+                </div>
+              </form>
+            </article>
+            <article class="card" style="margin-top:1rem">
+              <div class="card-head"><h3>Danh sách danh mục</h3></div>
+              <div id="admin-cat-table" class="data-table-wrap"></div>
+            </article>
+          </div>
+
+          <div id="admin-panel-menu" class="admin-tab-panel">
+            <article class="card">
+              <form id="admin-menu-form" class="feature-form">
+                <div class="field-row">
+                  <div class="field"><label>Danh mục *</label><select id="admin-menu-dm" class="input-grow" required></select></div>
+                  <div class="field"><label>Tên món *</label><input type="text" id="admin-menu-ten" required></div>
+                </div>
+                <div class="field-row">
+                  <div class="field"><label>Giá (đ) *</label><input type="number" id="admin-menu-gia" min="1000" required></div>
+                  <div class="field"><label>Đơn vị</label><input type="text" id="admin-menu-dvt" value="Phần"></div>
+                </div>
+                <button type="submit" class="btn primary">+ Lưu món vào database</button>
+              </form>
+            </article>
+            <article class="card" style="margin-top:1rem">
+              <div id="admin-menu-table" class="data-table-wrap"></div>
+            </article>
+          </div>
+
+          <div id="admin-panel-tables" class="admin-tab-panel">
+            <article class="card">
+              <form id="admin-table-form" class="feature-form">
+                <div class="field-row">
+                  <div class="field"><label>Tên bàn *</label><input type="text" id="admin-table-ten" placeholder="Bàn 1" required></div>
+                  <div class="field"><label>Vị trí</label><input type="text" id="admin-table-vitri" value="Tầng 1"></div>
+                  <div class="field"><label>Sức chứa</label><input type="number" id="admin-table-suc" min="1" value="4"></div>
+                </div>
+                <button type="submit" class="btn primary">+ Lưu bàn</button>
+              </form>
+            </article>
+            <article class="card" style="margin-top:1rem">
+              <div id="admin-tables-table" class="data-table-wrap"></div>
+            </article>
+          </div>
+
+          <div id="admin-panel-staff" class="admin-tab-panel">
+            <article class="card">
+              <form id="admin-staff-form" class="feature-form">
+                <div class="field-row">
+                  <div class="field"><label>Họ tên *</label><input type="text" id="admin-staff-ten" required></div>
+                  <div class="field"><label>Email *</label><input type="email" id="admin-staff-email" required></div>
+                </div>
+                <div class="field-row">
+                  <div class="field"><label>SĐT</label><input type="text" id="admin-staff-sdt" placeholder="09xxxxxxxx"></div>
+                  <div class="field"><label>Chức vụ *</label>
+                    <select id="admin-staff-chuc" class="input-grow">
+                      <option value="Quản lý">Quản lý</option>
+                      <option value="Thu ngân">Thu ngân</option>
+                      <option value="Phục vụ" selected>Phục vụ</option>
+                      <option value="Đầu bếp">Đầu bếp</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field"><label>Mật khẩu (để trống = password123)</label><input type="text" id="admin-staff-pass" placeholder="password123"></div>
+                <button type="submit" class="btn primary">+ Lưu nhân viên</button>
+              </form>
+            </article>
+            <article class="card" style="margin-top:1rem">
+              <div class="card-head"><h3>Danh sách & phân quyền</h3><button type="button" id="btn-reload-permissions" class="btn ghost btn-sm">Làm mới</button></div>
+              <div id="permissions-table-wrap" class="data-table-wrap"></div>
+              <div id="roles-reference" class="list-rich" style="margin-top:1rem"></div>
+            </article>
+          </div>
+
+          <div id="admin-panel-customers" class="admin-tab-panel">
+            <article class="card">
+              <form id="admin-kh-form" class="feature-form">
+                <div class="field-row">
+                  <div class="field"><label>Họ tên *</label><input type="text" id="admin-kh-ten" required></div>
+                  <div class="field"><label>SĐT *</label><input type="text" id="admin-kh-sdt" required></div>
+                  <div class="field"><label>Điểm tích lũy</label><input type="number" id="admin-kh-diem" min="0" value="0"></div>
+                </div>
+                <button type="submit" class="btn primary">+ Lưu khách hàng</button>
+              </form>
+            </article>
+            <article class="card" style="margin-top:1rem">
+              <div id="admin-kh-table" class="data-table-wrap"></div>
+            </article>
+          </div>
+
+          <div id="admin-panel-inventory" class="admin-tab-panel">
+            <article class="card">
+              <form id="admin-nl-form" class="feature-form">
+                <div class="field-row">
+                  <div class="field"><label>Tên nguyên liệu *</label><input type="text" id="admin-nl-ten" required></div>
+                  <div class="field"><label>Tồn kho</label><input type="number" id="admin-nl-ton" min="0" step="0.1" value="0"></div>
+                  <div class="field"><label>Đơn vị</label><input type="text" id="admin-nl-dvt" value="Kg"></div>
+                </div>
+                <button type="submit" class="btn primary">+ Lưu nguyên liệu</button>
+              </form>
+            </article>
+            <article class="card" style="margin-top:1rem">
+              <div id="admin-nl-table" class="data-table-wrap"></div>
+            </article>
+          </div>
         </section>
 
         <!-- AI -->
@@ -339,6 +530,7 @@
     </div>
   </div>
   <script src="js/app.js"></script>
+  <script src="js/admin.js"></script>
   <script src="js/extras.js"></script>
 </body>
 </html>

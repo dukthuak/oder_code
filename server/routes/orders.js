@@ -49,7 +49,7 @@ router.get('/:id/details', authMiddleware, async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM vw_chi_tiet_hoa_don WHERE ma_hd = ?', [
       req.params.id,
     ]);
-    res.json(rows);
+    res.json(rows.map(mapQtRow));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
