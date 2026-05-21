@@ -1,13 +1,18 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+
 const khoRoles = [authMiddleware, requireRole('admin', 'kho')];
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM nguyen_lieu ORDER BY ten_nl');
+    const [rows] = await pool.query(
+      `SELECT maNL AS ma_nl, tenNL AS ten_nl, slTON AS ton_kho, donVITINH AS don_vi,
+              NULL AS ton_toi_thieu
+       FROM NGUYENLIEU ORDER BY tenNL`
+    );
     res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -24,30 +29,18 @@ router.get('/alerts', async (req, res) => {
 });
 
 router.post('/import', ...khoRoles, async (req, res) => {
-  const { ma_ncc, chi_tiet } = req.body;
-  const ma_nv = req.user.ma_nv;
-  const conn = await pool.getConnection();
+  const { ma_nl, so_luong } = req.body;
+  if (!ma_nl || !so_luong) {
+    return res.status(400).json({ error: 'Cần ma_nl và so_luong' });
+  }
   try {
-    await conn.beginTransaction();
-    const [r] = await conn.query(
-      'INSERT INTO phieu_nhap (ma_ncc, ma_nv) VALUES (?,?)',
-      [ma_ncc, ma_nv]
-    );
-    const ma_pn = r.insertId;
-    for (const item of chi_tiet) {
-      await conn.query(
-        'INSERT INTO chi_tiet_pn (ma_pn, ma_nl, so_luong, don_gia) VALUES (?,?,?,?)',
-        [ma_pn, item.ma_nl, item.so_luong, item.don_gia]
-      );
-    }
-    await conn.query('CALL sp_hoan_tat_phieu_nhap(?)', [ma_pn]);
-    await conn.commit();
-    res.status(201).json({ ma_pn });
+    await pool.query('UPDATE NGUYENLIEU SET slTON = slTON + ? WHERE maNL = ?', [
+      so_luong,
+      ma_nl,
+    ]);
+    res.json({ ok: true });
   } catch (e) {
-    await conn.rollback();
     res.status(500).json({ error: e.message });
-  } finally {
-    conn.release();
   }
 });
 

@@ -37,32 +37,33 @@ function matchIntent(msg) {
 }
 
 async function searchMenu(intent, limit = 6) {
-  let sql = `SELECT m.ma_mon, m.ten_mon, m.gia_ban, m.don_vi, m.mo_ta, dm.ten_dm
-             FROM mon_an m JOIN danh_muc dm ON m.ma_dm = dm.ma_dm
-             WHERE m.trang_thai = 'con'`;
+  let sql = `SELECT m.maMON AS ma_mon, m.tenMON AS ten_mon, m.donGIA AS gia_ban, m.donVITINH AS don_vi,
+                    l.tenLOAI AS ten_dm
+             FROM MONAN m JOIN LOAIMON l ON m.maLOAI = l.maLOAI
+             WHERE m.trangthaiMON = 'Sẵn có'`;
   const params = [];
 
   if (intent?.sql) {
-    sql += ' AND m.ten_mon LIKE ?';
+    sql += ' AND m.tenMON LIKE ?';
     params.push(intent.sql);
   } else if (intent?.cat) {
-    sql += ' AND dm.ten_dm = ?';
+    sql += ' AND l.tenLOAI = ?';
     params.push(intent.cat);
   }
 
-  if (intent?.sort === 'price_asc') sql += ' ORDER BY m.gia_ban ASC';
-  else if (intent?.sort === 'price_desc') sql += ' ORDER BY m.gia_ban DESC';
+  if (intent?.sort === 'price_asc') sql += ' ORDER BY m.donGIA ASC';
+  else if (intent?.sort === 'price_desc') sql += ' ORDER BY m.donGIA DESC';
   else if (intent?.sort === 'popular') {
-    sql = `SELECT m.ma_mon, m.ten_mon, m.gia_ban, m.don_vi, m.mo_ta, dm.ten_dm,
-                  IFNULL(v.tong_sl, 0) AS tong_sl
-           FROM mon_an m
-           JOIN danh_muc dm ON m.ma_dm = dm.ma_dm
-           LEFT JOIN vw_mon_ban_chay v ON m.ma_mon = v.ma_mon
-           WHERE m.trang_thai = 'con'
-           ORDER BY tong_sl DESC, m.gia_ban DESC`;
+    sql = `SELECT m.maMON AS ma_mon, m.tenMON AS ten_mon, m.donGIA AS gia_ban, m.donVITINH AS don_vi,
+                  l.tenLOAI AS ten_dm, IFNULL(v.tong_sl, 0) AS tong_sl
+           FROM MONAN m
+           JOIN LOAIMON l ON m.maLOAI = l.maLOAI
+           LEFT JOIN vw_mon_ban_chay v ON m.maMON = v.ma_mon
+           WHERE m.trangthaiMON = 'Sẵn có'
+           ORDER BY tong_sl DESC, m.donGIA DESC`;
     params.length = 0;
   } else {
-    sql += ' ORDER BY dm.ten_dm, m.ten_mon';
+    sql += ' ORDER BY l.tenLOAI, m.tenMON';
   }
 
   sql += ' LIMIT ?';
@@ -138,18 +139,13 @@ function helpAnswer(role) {
   );
 }
 
-async function answerRevenue(maCn) {
-  const cnFilter = maCn ? ' AND h.ma_cn = ?' : '';
-  const params = maCn ? [maCn] : [];
+async function answerRevenue() {
   const [[today]] = await pool.query(
-    `SELECT IFNULL(SUM(h.tong_tien - h.giam_gia), 0) AS dt, COUNT(*) AS hd
-     FROM hoa_don h WHERE h.trang_thai = 'da_thanh_toan' AND DATE(h.ngay_lap) = CURDATE()${cnFilter}`,
-    params
+    `SELECT IFNULL(SUM(tongTIEN), 0) AS dt, COUNT(*) AS hd
+     FROM HOADON WHERE trangthaiHD = 'Đã thanh toán' AND DATE(ngayLAP) = CURDATE()`
   );
   const [[open]] = await pool.query(
-    `SELECT COUNT(*) AS cnt FROM hoa_don h
-     WHERE h.trang_thai IN ('mo','dang_che_bien','cho_thanh_toan')${cnFilter}`,
-    params
+    `SELECT COUNT(*) AS cnt FROM HOADON WHERE trangthaiHD = 'Chưa thanh toán'`
   );
   const dt = Number(today.dt);
   const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n);
@@ -172,7 +168,7 @@ async function answerInventory() {
   }
   const lines = rows
     .slice(0, 5)
-    .map((r) => `• **${r.ten_nl}**: ${r.ton_kho} ${r.don_vi} (${String(r.muc_canh_bao).replace(/_/g, ' ')})`)
+    .map((r) => `• **${r.ten_nl}**: ${r.ton_kho} ${r.don_vi} (${r.trang_thai || 'cảnh báo'})`)
     .join('\n');
   return {
     answer: `**Cảnh báo kho** (${rows.length} mục):\n${lines}${rows.length > 5 ? '\n…' : ''}`,
@@ -182,23 +178,23 @@ async function answerInventory() {
 
 async function answerKitchen() {
   const [rows] = await pool.query(
-    `SELECT ct.trang_thai_mon, m.ten_mon, ct.so_luong, b.so_ban
-     FROM chi_tiet_hd ct
-     JOIN mon_an m ON ct.ma_mon = m.ma_mon
-     JOIN hoa_don h ON ct.ma_hd = h.ma_hd
-     LEFT JOIN ban_an b ON h.ma_ban = b.ma_ban
-     WHERE ct.trang_thai_mon IN ('cho','dang_nau')
-       AND h.trang_thai IN ('mo','dang_che_bien','cho_thanh_toan')
-     ORDER BY ct.ma_ct LIMIT 10`
+    `SELECT ct.trangthaiQT AS trang_thai_mon, m.tenMON AS ten_mon, ct.soLUONG AS so_luong, b.tenBAN AS so_ban
+     FROM CHITIET_HD ct
+     JOIN MONAN m ON ct.maMON = m.maMON
+     JOIN HOADON h ON ct.maHD = h.maHD
+     LEFT JOIN BAN b ON h.maBAN = b.maBAN
+     WHERE ct.trangthaiQT IN ('Chờ cung ứng','Đang chế biến')
+       AND h.trangthaiHD = 'Chưa thanh toán'
+     ORDER BY ct.maCTHD LIMIT 10`
   );
   if (!rows.length) {
     return { answer: '**Bếp đang nhàn** — không có món chờ hoặc đang nấu.', actions: [{ label: 'Mở Bếp', page: 'kitchen' }] };
   }
-  const cho = rows.filter((r) => r.trang_thai_mon === 'cho').length;
+  const cho = rows.filter((r) => r.trang_thai_mon === 'Chờ cung ứng').length;
   const nau = rows.length - cho;
   const lines = rows
     .slice(0, 6)
-    .map((r) => `• ${r.ten_mon} ×${r.so_luong} — Bàn ${r.so_ban || '—'} (${r.trang_thai_mon === 'cho' ? 'chờ' : 'đang nấu'})`)
+    .map((r) => `• ${r.ten_mon} ×${r.so_luong} — Bàn ${r.so_ban || '—'} (${r.trang_thai_mon === 'Chờ cung ứng' ? 'chờ' : 'đang nấu'})`)
     .join('\n');
   return {
     answer: `**Hàng đợi bếp:** ${cho} chờ, ${nau} đang nấu.\n${lines}`,
@@ -208,31 +204,23 @@ async function answerKitchen() {
 
 async function answerReservations() {
   const [rows] = await pool.query(
-    `SELECT d.ngay_gio, d.trang_thai, kh.ho_ten, b.so_ban
-     FROM dat_ban d
-     LEFT JOIN khach_hang kh ON d.ma_kh = kh.ma_kh
-     JOIN ban_an b ON d.ma_ban = b.ma_ban
-     WHERE d.ngay_gio >= NOW()
-     ORDER BY d.ngay_gio LIMIT 6`
+    `SELECT tenBAN AS so_ban, viTRI, sucCHUA, trangthaiBAN AS trang_thai FROM BAN WHERE trangthaiBAN = 'Đã đặt' ORDER BY tenBAN LIMIT 8`
   );
   if (!rows.length) {
-    return { answer: 'Không có lịch đặt bàn sắp tới.', actions: [{ label: 'Đặt bàn', page: 'reservations' }] };
+    return { answer: 'Không có bàn đang ở trạng thái **Đã đặt**.', actions: [{ label: 'Đặt bàn', page: 'reservations' }] };
   }
-  const lines = rows
-    .map((r) => {
-      const t = new Date(r.ngay_gio).toLocaleString('vi-VN');
-      return `• ${r.ho_ten || 'Khách'} — Bàn ${r.so_ban}, ${t} (${r.trang_thai})`;
-    })
-    .join('\n');
-  return { answer: `**Lịch đặt bàn sắp tới:**\n${lines}`, actions: [{ label: 'Mở Đặt bàn', page: 'reservations' }] };
+  const lines = rows.map((r) => `• **${r.so_ban}** — ${r.viTRI}, ${r.sucCHUA} chỗ`).join('\n');
+  return { answer: `**Bàn đã đặt:**\n${lines}`, actions: [{ label: 'Mở Đặt bàn', page: 'reservations' }] };
 }
 
 async function answerInfo() {
-  const [rows] = await pool.query(
-    "SELECT ten_cn, dia_chi, gio_mo_cua, sdt FROM chi_nhanh WHERE trang_thai = 'hoat_dong' LIMIT 5"
-  );
-  const lines = rows.map((c) => `• **${c.ten_cn}** — ${c.dia_chi || '—'}, ${c.gio_mo_cua || '—'}, ${c.sdt || ''}`).join('\n');
-  return { answer: `**Thông tin chi nhánh Phở Hà Nội:**\n${lines || 'Chưa có dữ liệu chi nhánh.'}` };
+  return {
+    answer:
+      '**Nhà hàng Golden Taste** — mô hình QL_cuahanggoldentaste.\n' +
+      '• Khu vực bàn: Tầng 1, Sân vườn, VIP 1, VIP 2\n' +
+      '• Trạng thái hóa đơn: Chưa thanh toán / Đã thanh toán / Đã hủy\n' +
+      '• Trạng thái món: Chờ cung ứng → Đang chế biến → Đã phục vụ',
+  };
 }
 
 async function processChat(message, user, maKh, maHd) {
@@ -288,7 +276,7 @@ async function processChat(message, user, maKh, maHd) {
     if (!['admin', 'thu_ngan'].includes(role)) {
       answer = 'Bạn không có quyền xem báo cáo doanh thu chi tiết. Hỏi *"hướng dẫn"* hoặc liên hệ Thu ngân/Quản trị.';
     } else {
-      const res = await answerRevenue(maCn);
+      const res = await answerRevenue();
       answer = res.answer;
       actions = res.actions || [];
     }
@@ -401,8 +389,8 @@ async function processChat(message, user, maKh, maHd) {
   let orderHint = null;
   if (maHd) {
     const [hd] = await pool.query(
-      `SELECT h.ma_hd, b.so_ban, h.tong_tien FROM hoa_don h
-       LEFT JOIN ban_an b ON h.ma_ban = b.ma_ban WHERE h.ma_hd = ?`,
+      `SELECT h.maHD AS ma_hd, b.tenBAN AS so_ban, h.tongTIEN AS tong_tien FROM HOADON h
+       LEFT JOIN BAN b ON h.maBAN = b.maBAN WHERE h.maHD = ?`,
       [maHd]
     );
     if (hd.length) {
@@ -423,14 +411,9 @@ async function processChat(message, user, maKh, maHd) {
 }
 
 router.post('/forecast', ...aiRoles, async (req, res) => {
-  const days = parseInt(req.body.days || '7', 10);
   try {
-    await pool.query('CALL sp_ai_du_bao_nhu_cau(?)', [days]);
     const [rows] = await pool.query(
-      `SELECT a.*, m.ten_mon FROM ai_du_bao a
-       LEFT JOIN mon_an m ON a.ma_mon = m.ma_mon
-       WHERE a.loai = 'nhu_cau_mon' AND a.ngay_tao >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-       ORDER BY a.gia_tri DESC`
+      `SELECT ma_mon, ten_mon, tong_sl AS gia_tri, 'nhu_cau_mon' AS loai FROM vw_mon_ban_chay LIMIT 10`
     );
     res.json(rows);
   } catch (e) {
@@ -441,8 +424,12 @@ router.post('/forecast', ...aiRoles, async (req, res) => {
 router.get('/recommend/:maKh', ...aiRoles, async (req, res) => {
   const limit = parseInt(req.query.limit || '5', 10);
   try {
-    const [rows] = await pool.query('CALL sp_ai_goi_y_mon(?, ?)', [req.params.maKh, limit]);
-    res.json(rows[0] || rows);
+    const [rows] = await pool.query(
+      `SELECT m.maMON AS ma_mon, m.tenMON AS ten_mon, m.donGIA AS gia_ban
+       FROM vw_mon_ban_chay v JOIN MONAN m ON v.ma_mon = m.maMON LIMIT ?`,
+      [limit]
+    );
+    res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -450,8 +437,8 @@ router.get('/recommend/:maKh', ...aiRoles, async (req, res) => {
 
 router.post('/chat', ...aiRoles, async (req, res) => {
   const message = String(req.body.message || '').trim();
-  const maKh = parseInt(req.body.ma_kh || '0', 10);
-  const maHd = req.body.ma_hd ? parseInt(req.body.ma_hd, 10) : null;
+  const maKh = req.body.ma_kh || null;
+  const maHd = req.body.ma_hd ? String(req.body.ma_hd) : null;
 
   try {
     const payload = await processChat(message, req.user, maKh, maHd);
@@ -463,12 +450,9 @@ router.post('/chat', ...aiRoles, async (req, res) => {
 
 router.post('/anomaly', authMiddleware, requireRole('admin', 'kho'), async (req, res) => {
   try {
-    await pool.query('CALL sp_ai_phat_hien_bat_thuong()');
     const [rows] = await pool.query(
-      `SELECT a.*, nl.ten_nl FROM ai_du_bao a
-       LEFT JOIN nguyen_lieu nl ON a.ma_nl = nl.ma_nl
-       WHERE a.loai = 'canh_bao_ton' AND a.ngay_tao >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-       ORDER BY a.ngay_tao DESC`
+      `SELECT ma_nl, ten_nl, ton_kho, trang_thai AS loai FROM vw_ton_kho_canh_bao
+       WHERE trang_thai IN ('Cần nhập gấp','Sắp hết')`
     );
     res.json(rows);
   } catch (e) {
@@ -478,8 +462,10 @@ router.post('/anomaly', authMiddleware, requireRole('admin', 'kho'), async (req,
 
 router.get('/insights', ...aiRoles, async (req, res) => {
   try {
-    const [rows] = await pool.query(`SELECT * FROM ai_du_bao ORDER BY ngay_tao DESC LIMIT 30`);
-    res.json(rows);
+    const [top] = await pool.query('SELECT * FROM vw_mon_ban_chay LIMIT 5');
+    const [kho] = await pool.query('SELECT * FROM vw_BaoCaoTonKhoAnToan WHERE trangthaiKHO != "Ổn định" LIMIT 5');
+    const [nv] = await pool.query('SELECT * FROM vw_DoanhThuNhanVienThangNay ORDER BY doanhthuTHANG DESC LIMIT 3');
+    res.json({ top_mon: top, ton_kho: kho, doanh_thu_nv: nv });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

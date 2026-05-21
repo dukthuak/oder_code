@@ -2,17 +2,20 @@ const express = require('express');
 const pool = require('../config/db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const menuAdmin = [authMiddleware, requireRole('admin')];
+const { mapMonRow } = require('../lib/golden');
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT m.*, dm.ten_dm FROM mon_an m
-       JOIN danh_muc dm ON m.ma_dm = dm.ma_dm
-       ORDER BY dm.ten_dm, m.ten_mon`
+      `SELECT m.maMON AS ma_mon, m.tenMON AS ten_mon, m.donGIA AS gia_ban, m.donVITINH AS don_vi,
+              m.trangthaiMON AS trang_thai, m.mo_ta, l.maLOAI AS ma_dm, l.tenLOAI AS ten_dm
+       FROM MONAN m
+       JOIN LOAIMON l ON m.maLOAI = l.maLOAI
+       ORDER BY l.tenLOAI, m.tenMON`
     );
-    res.json(rows);
+    res.json(rows.map((r) => mapMonRow({ ...r, mo_ta: r.mo_ta || null })));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -20,7 +23,9 @@ router.get('/', async (req, res) => {
 
 router.get('/categories', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM danh_muc ORDER BY ten_dm');
+    const [rows] = await pool.query(
+      'SELECT maLOAI AS ma_dm, tenLOAI AS ten_dm FROM LOAIMON ORDER BY tenLOAI'
+    );
     res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -28,22 +33,27 @@ router.get('/categories', async (req, res) => {
 });
 
 router.post('/', ...menuAdmin, async (req, res) => {
-  const { ma_dm, ten_mon, gia_ban, mo_ta, don_vi } = req.body;
+  const { ma_dm, ten_mon, gia_ban, don_vi, trang_thai } = req.body;
   try {
-    const [r] = await pool.query(
-      'INSERT INTO mon_an (ma_dm, ten_mon, gia_ban, mo_ta, don_vi) VALUES (?,?,?,?,?)',
-      [ma_dm, ten_mon, gia_ban, mo_ta || null, don_vi || 'phần']
+    const [[{ n }]] = await pool.query(
+      `SELECT CONCAT('MA', LPAD(IFNULL(MAX(CAST(SUBSTRING(maMON, 3) AS UNSIGNED)), 0) + 1, 3, '0')) AS n FROM MONAN`
     );
-    res.status(201).json({ ma_mon: r.insertId });
+    await pool.query(
+      `INSERT INTO MONAN (maMON, tenMON, donGIA, donVITINH, trangthaiMON, maLOAI)
+       VALUES (?,?,?,?,?,?)`,
+      [n, ten_mon, gia_ban, don_vi || 'Phần', trang_thai || 'Sẵn có', ma_dm]
+    );
+    res.status(201).json({ ma_mon: n });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
 router.patch('/:id/status', ...menuAdmin, async (req, res) => {
-  const { trang_thai } = req.body;
+  const statusMap = { con: 'Sẵn có', het: 'Hết hàng', ngung: 'Ngừng bán' };
+  const trang_thai = statusMap[req.body.trang_thai] || req.body.trang_thai;
   try {
-    await pool.query('UPDATE mon_an SET trang_thai = ? WHERE ma_mon = ?', [trang_thai, req.params.id]);
+    await pool.query('UPDATE MONAN SET trangthaiMON = ? WHERE maMON = ?', [trang_thai, req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

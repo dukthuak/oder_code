@@ -40,7 +40,7 @@ function buildPoolConfig() {
     port: parseInt(process.env.DB_PORT || '3306', 10),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'nha_hang_db',
+    database: process.env.DB_NAME || 'ql_golden_taste',
     waitForConnections: true,
     connectionLimit: 10,
     charset: 'utf8mb4',

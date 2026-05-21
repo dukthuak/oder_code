@@ -1,17 +1,24 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+
 const reportRoles = [authMiddleware, requireRole('admin', 'thu_ngan')];
+const { mapHdRow } = require('../lib/golden');
 
 const router = express.Router();
 
 router.get('/revenue', ...reportRoles, async (req, res) => {
   const tu = req.query.tu || new Date().toISOString().slice(0, 10);
   const den = req.query.den || tu;
-  const ma_cn = req.query.ma_cn || null;
   try {
-    const [rows] = await pool.query('CALL sp_bao_cao_doanh_thu(?, ?, ?)', [tu, den, ma_cn]);
-    res.json(rows[0] || []);
+    const [rows] = await pool.query(
+      `SELECT DATE(ngayLAP) AS ngay, SUM(tongTIEN) AS doanh_thu, COUNT(*) AS so_hd
+       FROM HOADON
+       WHERE trangthaiHD = 'Đã thanh toán' AND DATE(ngayLAP) BETWEEN ? AND ?
+       GROUP BY DATE(ngayLAP) ORDER BY ngay`,
+      [tu, den]
+    );
+    res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -19,9 +26,7 @@ router.get('/revenue', ...reportRoles, async (req, res) => {
 
 router.get('/top-dishes', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM vw_mon_ban_chay ORDER BY tong_sl DESC LIMIT 10'
-    );
+    const [rows] = await pool.query('SELECT * FROM vw_mon_ban_chay LIMIT 10');
     res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -29,12 +34,7 @@ router.get('/top-dishes', async (req, res) => {
 });
 
 router.get('/branches', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT * FROM chi_nhanh');
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  res.json([{ ma_cn: 1, ten_cn: 'Golden Taste', dia_chi: 'Nhà hàng Golden Taste' }]);
 });
 
 router.get(
@@ -42,72 +42,61 @@ router.get(
   authMiddleware,
   requireRole('admin', 'thu_ngan', 'phuc_vu', 'bep', 'kho'),
   async (req, res) => {
-  const ma_cn = req.query.ma_cn || null;
-  const cnFilter = ma_cn ? ' AND h.ma_cn = ?' : '';
-  const params = ma_cn ? [ma_cn] : [];
-  try {
-    const [[revToday]] = await pool.query(
-      `SELECT IFNULL(SUM(h.tong_tien - h.giam_gia), 0) AS doanh_thu,
-              COUNT(*) AS so_hd
-       FROM hoa_don h
-       WHERE h.trang_thai = 'da_thanh_toan'
-         AND DATE(h.ngay_lap) = CURDATE()${cnFilter}`,
-      params
-    );
-    const [[openOrders]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM hoa_don h
-       WHERE h.trang_thai IN ('mo','dang_che_bien','cho_thanh_toan')${cnFilter}`,
-      params
-    );
-    const [[tables]] = await pool.query(
-      `SELECT
-         SUM(trang_thai = 'dang_dung') AS dang_dung,
-         SUM(trang_thai = 'dat_truoc') AS dat_truoc,
-         SUM(trang_thai = 'trong') AS trong
-       FROM ban_an WHERE 1=1${ma_cn ? ' AND ma_cn = ?' : ''}`,
-      ma_cn ? [ma_cn] : []
-    );
-    const [[kitchen]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM chi_tiet_hd ct
-       JOIN hoa_don h ON ct.ma_hd = h.ma_hd
-       WHERE ct.trang_thai_mon IN ('cho','dang_nau')
-         AND h.trang_thai IN ('mo','dang_che_bien','cho_thanh_toan')${cnFilter}`,
-      params
-    );
-    const [recent] = await pool.query(
-      `SELECT h.ma_hd, h.tong_tien, h.giam_gia, h.ngay_lap, h.trang_thai,
-              b.so_ban, kh.ho_ten AS ten_khach
-       FROM hoa_don h
-       LEFT JOIN ban_an b ON h.ma_ban = b.ma_ban
-       LEFT JOIN khach_hang kh ON h.ma_kh = kh.ma_kh
-       WHERE 1=1${cnFilter}
-       ORDER BY h.ngay_lap DESC LIMIT 8`,
-      params
-    );
-    const [topKh] = await pool.query(
-      `SELECT ho_ten, diem_tich_luy, hang_thanh_vien FROM khach_hang
-       WHERE ma_kh > 1 ORDER BY diem_tich_luy DESC LIMIT 5`
-    );
-    res.json({
-      doanh_thu_hom_nay: Number(revToday.doanh_thu),
-      so_hd_hom_nay: revToday.so_hd,
-      order_dang_mo: openOrders.cnt,
-      ban_dang_dung: tables.dang_dung,
-      ban_dat_truoc: tables.dat_truoc,
-      ban_trong: tables.trong,
-      mon_bep_cho: kitchen.cnt,
-      gan_day: recent,
-      khach_vip: topKh,
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    try {
+      const [[revToday]] = await pool.query(
+        `SELECT IFNULL(SUM(tongTIEN), 0) AS doanh_thu, COUNT(*) AS so_hd
+         FROM HOADON WHERE trangthaiHD = 'Đã thanh toán' AND DATE(ngayLAP) = CURDATE()`
+      );
+      const [[openOrders]] = await pool.query(
+        `SELECT COUNT(*) AS cnt FROM HOADON WHERE trangthaiHD = 'Chưa thanh toán'`
+      );
+      const [[tables]] = await pool.query(
+        `SELECT
+           SUM(trangthaiBAN = 'Có khách') AS dang_dung,
+           SUM(trangthaiBAN = 'Đã đặt') AS dat_truoc,
+           SUM(trangthaiBAN = 'Trống') AS trong
+         FROM BAN`
+      );
+      const [[kitchen]] = await pool.query(
+        `SELECT COUNT(*) AS cnt FROM CHITIET_HD ct
+         JOIN HOADON h ON ct.maHD = h.maHD
+         WHERE ct.trangthaiQT IN ('Chờ cung ứng', 'Đang chế biến')
+           AND h.trangthaiHD = 'Chưa thanh toán'`
+      );
+      const [recent] = await pool.query(
+        `SELECT h.maHD AS ma_hd, h.tongTIEN AS tong_tien, 0 AS giam_gia, h.ngayLAP AS ngay_lap,
+                h.trangthaiHD AS trang_thai, b.tenBAN AS so_ban, kh.tenKH AS ten_khach
+         FROM HOADON h
+         LEFT JOIN BAN b ON h.maBAN = b.maBAN
+         LEFT JOIN KHACHHANG kh ON h.maKH = kh.maKH
+         ORDER BY h.ngayLAP DESC LIMIT 8`
+      );
+      const [topKh] = await pool.query(
+        `SELECT tenKH AS ho_ten, diemTICHLUY AS diem_tich_luy,
+                CASE WHEN diemTICHLUY >= 400 THEN 'bach_kim' WHEN diemTICHLUY >= 200 THEN 'vang' ELSE 'dong' END AS hang_thanh_vien
+         FROM KHACHHANG ORDER BY diemTICHLUY DESC LIMIT 5`
+      );
+      res.json({
+        doanh_thu_hom_nay: Number(revToday.doanh_thu),
+        so_hd_hom_nay: revToday.so_hd,
+        order_dang_mo: openOrders.cnt,
+        ban_dang_dung: tables.dang_dung,
+        ban_dat_truoc: tables.dat_truoc,
+        ban_trong: tables.trong,
+        mon_bep_cho: kitchen.cnt,
+        gan_day: recent.map(mapHdRow),
+        khach_vip: topKh,
+      });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   }
-});
+);
 
-router.get('/customers', ...reportRoles, async (req, res) => {
+router.get('/inventory-alerts', authMiddleware, async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT * FROM khach_hang ORDER BY diem_tich_luy DESC LIMIT 100'
+      `SELECT * FROM vw_ton_kho_canh_bao ORDER BY ton_kho ASC LIMIT 20`
     );
     res.json(rows);
   } catch (e) {
