@@ -1,7 +1,7 @@
 {
-  "name": "nha-hang-server",
+  "name": "nha-hang-golden-taste",
   "version": "1.0.0",
-  "description": "Backend quản lý nhà hàng - Node.js + MySQL",
+  "description": "Nhà hàng Golden Taste — Backend Node.js + MySQL",
   "main": "server.js",
   "engines": {
     "node": ">=18"

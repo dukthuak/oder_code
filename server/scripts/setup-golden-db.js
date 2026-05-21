@@ -55,6 +55,17 @@ async function run() {
   const hash = await bcrypt.hash('password123', 10);
   await conn.query('USE ql_golden_taste');
   await conn.query('UPDATE NHANVIEN SET matKhauHash = ?', [hash]);
+
+  const appUser = (process.env.DB_USER || 'nh_app').replace(/[^a-zA-Z0-9_]/g, '');
+  const appPass = (process.env.DB_PASSWORD || 'App@123').replace(/'/g, "''");
+  for (const host of ['localhost', '127.0.0.1']) {
+    await conn.query(
+      `CREATE USER IF NOT EXISTS '${appUser}'@'${host}' IDENTIFIED BY '${appPass}'`
+    );
+    await conn.query(`GRANT ALL PRIVILEGES ON ql_golden_taste.* TO '${appUser}'@'${host}'`);
+  }
+  await conn.query('FLUSH PRIVILEGES');
+  console.log(`User MySQL '${appUser}' đã có quyền ql_golden_taste`);
   console.log('Mật khẩu tất cả NV: password123');
   console.log('DB: ql_golden_taste — xong.');
   await conn.end();

@@ -118,7 +118,7 @@ function buildMenuAnswer(message, suggestions, menuIntent) {
 function welcomeAnswer(role, name) {
   const r = ROLE_LABELS[role] || role;
   return (
-    `Xin chào **${name || 'bạn'}**! Mình là **trợ lý AI** Phở Hà Nội — hỗ trợ giải quyết vấn đề, hướng dẫn hệ thống, tra cứu kho/báo cáo/bếp, và gợi ý món khi cần.\n\n` +
+    `Xin chào **${name || 'bạn'}**! Mình là **trợ lý AI** Nhà hàng Golden Taste — hỗ trợ giải quyết vấn đề, hướng dẫn hệ thống, tra cứu kho/báo cáo/bếp, và gợi ý món khi cần.\n\n` +
     `Vai trò của bạn: **${r}**. Hỏi ví dụ: *"hướng dẫn"*, *"doanh thu hôm nay"*, *"cảnh báo kho"*, *"lỗi không kết nối"*, *"gợi ý phở"*.`
   );
 }
